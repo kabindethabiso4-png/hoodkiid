@@ -30,7 +30,10 @@
     "</p><p>Items subtotal: <strong>" + HK.money(order.subtotal) + "</strong></p><p>Order status: " +
     HK.escapeHtml(String(order.status).replaceAll("_", " ")) + "</p>";
 
-  const phone = String(HK.config.whatsappPhone || "").replace(/\D/g, "");
+  const phoneDigits = String(HK.config.whatsappPhone || "").replace(/\D/g, "");
+  const phone = phoneDigits.length === 10 && phoneDigits.charAt(0) === "0"
+    ? "27" + phoneDigits.slice(1)
+    : phoneDigits;
   if (phone) {
     whatsApp.href = "https://wa.me/" + phone + "?text=" + encodeURIComponent("Hi HOODKIID, I placed order " + order.reference + ". Please confirm my order and payment details.");
     whatsApp.hidden = false;

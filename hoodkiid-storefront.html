@@ -176,7 +176,7 @@ body.cart #drawer{transform:none}body.cart #veil{opacity:1;visibility:visible}
   <a href="#top" class="logo">HOODKIID</a>
   <button class="burger" id="burger" aria-label="Menu">☰</button>
   <nav id="nav">
-    <a href="#shop" data-t="Shop"><span>Shop</span></a><a href="#lookbook" data-t="Lookbook"><span>Lookbook</span></a><a href="#about" data-t="Story"><span>Story</span></a><a href="#faq" data-t="FAQ"><span>FAQ</span></a><a href="#join" data-t="Join"><span>Join</span></a>
+    <a href="#shop" data-t="Shop"><span>Shop</span></a><a href="#lookbook" data-t="Lookbook"><span>Lookbook</span></a><a href="#about" data-t="Story"><span>Story</span></a><a href="#faq" data-t="FAQ"><span>FAQ</span></a><a href="#join" data-t="Join"><span>Join</span></a><a href="hoodkiid-site/account.html" data-t="Account"><span>Account</span></a>
     <button class="cartbtn" id="navCart">Cart (<span id="count">0</span>)</button>
   </nav>
 </header>
@@ -287,21 +287,20 @@ body.cart #drawer{transform:none}body.cart #veil{opacity:1;visibility:visible}
   <div id="items"></div>
   <div class="row" style="margin-bottom:12px"><b>Total</b><b id="total">R0</b></div>
   <form id="co">
-    <input id="cn" placeholder="Full name" required>
-    <input id="cp" placeholder="Phone / WhatsApp" required>
-    <input id="ce" type="email" placeholder="Email" required>
+    <p id="checkoutAccountMessage" class="note" role="status" aria-live="polite">Checking your account…</p>
+    <a class="btn" id="checkoutAccountLink" href="hoodkiid-site/account.html?next=checkout">Sign in or create account</a>
     <select id="cf" required><option value="delivery">Delivery</option><option value="pickup">Store pickup</option></select>
     <select id="cz" required><option value="Soshanguve">Soshanguve</option><option value="Pretoria">Pretoria</option><option value="Other">Other area</option></select>
     <div id="pickupField" hidden><select id="cl"><option value="">Choose a pickup location</option></select></div>
     <textarea id="ca" rows="2" placeholder="Delivery address" required></textarea>
-    <button class="add" id="placeOrder" style="padding:15px">Place order request</button>
+    <button class="add" id="placeOrder" style="padding:15px" disabled>Place order request</button>
     <p id="checkoutMessage" class="note" role="status" aria-live="polite"></p>
   </form>
 </aside>
 <div id="toast"></div>
 
 <script src="hoodkiid-site/assets/js/config.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 /* ====== SUPABASE CONFIG: paste your project values ====== */
 const SUPABASE_URL = window.HOODKIID_CONFIG?.supabaseUrl || '';
@@ -318,7 +317,7 @@ const demo = [
   {id:5,name:'Quarter-Zip Fleece · Pink',category:'Fleece',price:650,color:'#bbbbbb',sizes:['S','M','L']},
   {id:6,name:'Quarter-Zip Fleece · White',category:'Fleece',price:650,color:'#dddddd',sizes:['S','M','L','XL']}
 ];
-let products = demo, sb = null, cart = [], cat = 'All', Q = '', open = false;
+let products = demo, sb = null, cart = [], cat = 'All', Q = '', open = false, customerProfile = null;
 try { if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e){ console.error('Could not initialize Supabase:',e); }
 try { cart = JSON.parse(localStorage.getItem('hk_cart') || '[]'); } catch(e){}
 const save = () => { try { localStorage.setItem('hk_cart', JSON.stringify(cart)); } catch(e){} };
@@ -442,6 +441,21 @@ async function loadPickupLocations(){
   if(error){ console.error('Could not load pickup locations:',error); select.innerHTML='<option value="">Pickup locations are temporarily unavailable</option>'; return; }
   select.innerHTML='<option value="">Choose a pickup location</option>'+(data||[]).map(l=>`<option value="${esc(l.id)}" data-name="${esc(l.name)}" data-address="${esc(l.address)}">${esc(l.name)} — ${esc(l.address)}</option>`).join('');
 }
+async function loadCheckoutAccount(){
+  const message=$('#checkoutAccountMessage'), link=$('#checkoutAccountLink'), button=$('#placeOrder');
+  customerProfile=null; button.disabled=true; link.hidden=false;
+  if(!sb){ message.textContent='Customer accounts are unavailable until the store is connected.'; return; }
+  const sessionResult=await sb.auth.getSession();
+  if(sessionResult.error) throw sessionResult.error;
+  if(!sessionResult.data.session){ message.textContent='Sign in or create an account to place an order and track its updates.'; return; }
+  const profileResult=await sb.from('customer_profiles').select('first_name,last_name,whatsapp_phone,call_phone')
+    .eq('user_id',sessionResult.data.session.user.id).maybeSingle();
+  if(profileResult.error) throw profileResult.error;
+  if(!profileResult.data){ message.textContent='Complete your name and WhatsApp number in your account before placing an order.'; link.textContent='Complete account details'; link.href='hoodkiid-site/account.html'; return; }
+  customerProfile=profileResult.data;
+  message.textContent=`Ordering as ${customerProfile.first_name} ${customerProfile.last_name} · WhatsApp ${customerProfile.whatsapp_phone}`;
+  link.hidden=true; button.disabled=false;
+}
 function setFulfilmentFields(){
   const pickup=$('#cf').value==='pickup';
   $('#pickupField').hidden=!pickup;
@@ -456,6 +470,11 @@ $('#co').addEventListener('submit', async e => {
   e.preventDefault();
   if(!cart.length) return toast('Your cart is empty');
   if(!sb) return toast('Orders are unavailable until the store is connected');
+  if(!customerProfile){
+    try { await loadCheckoutAccount(); }
+    catch(err){ console.error('Could not check customer account:',err); $('#checkoutAccountMessage').textContent='Could not check your account. Please refresh and try again.'; }
+    if(!customerProfile) return toast('Sign in and complete your account details before ordering');
+  }
   if(cart.some(i=>!i.variant_id)) return toast('This item has no configured stock variant yet');
   const button=$('#placeOrder'); button.disabled=true; button.textContent='Saving order…';
   const pickup=$('#cf').value==='pickup', location=$('#cl').selectedOptions[0];
@@ -464,7 +483,6 @@ $('#co').addEventListener('submit', async e => {
   let response;
   try {
     response=await sb.rpc('create_order',{
-      p_customer_name:$('#cn').value.trim(),p_phone:$('#cp').value.trim(),p_email:$('#ce').value.trim(),
       p_fulfilment:pickup?'pickup':'delivery',p_delivery_zone:pickup?null:$('#cz').value,
       p_pickup_location_id:pickup?location.value:null,p_fulfilment_details:details,
       p_items:cart.map(i=>({variant_id:i.variant_id,quantity:i.qty}))
@@ -491,7 +509,10 @@ $('#jf').addEventListener('submit', async e => {
   try { const {error} = await sb.from('subscribers').insert({email:$('#em').value}); if(error) throw error; e.target.reset(); toast('You’re in, Kiid 🖤'); }
   catch(err){ console.error('Could not subscribe:',err); toast('Could not subscribe. Please try again.'); }
 });
-renderCart(); load().catch(err=>{ console.error('Could not load storefront data:',err); products=[]; $('#note').textContent='The catalogue is temporarily unavailable. Please refresh to try again.'; draw(); renderCart(); });
+renderCart();
+if(new URLSearchParams(window.location.search).get('checkout')==='1') cartOpen(true);
+loadCheckoutAccount().catch(err=>{ console.error('Could not check customer account:',err); $('#checkoutAccountMessage').textContent='Could not check your account. Please refresh and try again.'; });
+load().catch(err=>{ console.error('Could not load storefront data:',err); products=[]; $('#note').textContent='The catalogue is temporarily unavailable. Please refresh to try again.'; draw(); renderCart(); });
 </script>
 </body>
 </html>

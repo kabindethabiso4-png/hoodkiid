@@ -19,8 +19,38 @@
   <header class="site-header"><a class="wordmark" href="../hoodkiid-storefront.html">HOODKIID</a><nav aria-label="Main navigation"><a href="../hoodkiid-storefront.html#shop">Shop</a><a href="../hoodkiid-storefront.html">Home</a></nav></header>
   <main class="page-main narrow">
     <section class="page-intro"><p class="eyebrow">Your HOODKIID account</p><h1>Sign in.</h1><p>One sign-in for customers and team members. Admin access is granted separately by the owner.</p></section>
-    <section class="panel"><div class="tabs" role="tablist"><button class="tab active" id="signInTab" type="button" role="tab" aria-selected="true">Sign in</button><button class="tab" id="signUpTab" type="button" role="tab" aria-selected="false">Create account</button></div>
-      <form id="accountForm"><label for="accountEmail">Email</label><input class="field" id="accountEmail" type="email" autocomplete="email" required maxlength="254"><label for="accountPassword">Password</label><input class="field" id="accountPassword" type="password" autocomplete="current-password" required minlength="8" maxlength="128"><button class="button button-dark button-wide" id="accountSubmit" type="submit">Sign in</button><p class="form-message" id="accountMessage" role="status" aria-live="polite"></p></form>
+    <section class="panel" id="authPanel"><div class="tabs" role="tablist"><button class="tab active" id="signInTab" type="button" role="tab" aria-selected="true">Sign in</button><button class="tab" id="signUpTab" type="button" role="tab" aria-selected="false">Create account</button></div>
+      <form id="accountForm">
+        <div id="profileFields" hidden>
+          <label for="firstName">Name</label><input class="field" id="firstName" autocomplete="given-name" maxlength="80">
+          <label for="lastName">Surname</label><input class="field" id="lastName" autocomplete="family-name" maxlength="80">
+          <label for="callPhone">Call number <span class="muted">(optional)</span></label><input class="field" id="callPhone" type="tel" autocomplete="tel" maxlength="40">
+          <label for="whatsappPhone">WhatsApp number <span aria-hidden="true">*</span></label><input class="field" id="whatsappPhone" type="tel" autocomplete="tel" required maxlength="40">
+        </div>
+        <label for="accountEmail">Email</label><input class="field" id="accountEmail" type="email" autocomplete="email" required maxlength="254">
+        <label for="accountPassword">Password</label><input class="field" id="accountPassword" type="password" autocomplete="current-password" required minlength="8" maxlength="128">
+        <button class="button button-dark button-wide" id="accountSubmit" type="submit">Sign in</button>
+        <p class="form-message" id="accountMessage" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+    <section id="accountDashboard" hidden>
+      <div class="admin-heading"><h2>My account</h2><button class="button button-light" id="accountSignOut" type="button">Sign out</button></div>
+      <section class="panel">
+        <h2>Contact details</h2>
+        <form id="profileForm" class="admin-form">
+          <label for="profileFirstName">Name</label><input class="field" id="profileFirstName" required maxlength="80" autocomplete="given-name">
+          <label for="profileLastName">Surname</label><input class="field" id="profileLastName" required maxlength="80" autocomplete="family-name">
+          <label for="profileCallPhone">Call number <span class="muted">(optional)</span></label><input class="field" id="profileCallPhone" type="tel" maxlength="40" autocomplete="tel">
+          <label for="profileWhatsappPhone">WhatsApp number <span aria-hidden="true">*</span></label><input class="field" id="profileWhatsappPhone" type="tel" required maxlength="40" autocomplete="tel">
+          <button class="button button-dark" type="submit">Save contact details</button>
+          <p class="form-message" id="profileMessage" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+      <section class="panel">
+        <div class="admin-heading"><h2>Active orders</h2><button class="button button-light" id="refreshCustomerOrders" type="button">Refresh</button></div>
+        <p class="muted">Order and payment updates from the HOODKIID team appear here.</p>
+        <div id="customerOrders" class="orders-list" aria-live="polite"></div>
+      </section>
     </section>
   </main>
   <footer class="site-footer"><a class="wordmark" href="../hoodkiid-storefront.html">HOODKIID</a><small>© <span data-year></span> HOODKIID.</small></footer>

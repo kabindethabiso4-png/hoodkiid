@@ -30,7 +30,7 @@
   async function loadOrders() {
     ordersList.innerHTML = "<p>Loading orders…</p>";
     const result = await HK.client.from("orders")
-      .select("id,order_reference,customer_name,phone,email,fulfilment,fulfilment_details,subtotal,delivery_fee,total,order_status,payment_status,created_at,items")
+      .select("id,order_reference,customer_name,phone,whatsapp_phone,email,fulfilment,fulfilment_details,subtotal,delivery_fee,total,order_status,payment_status,created_at,items")
       .order("created_at", { ascending: false }).limit(100);
     if (result.error) {
       ordersList.innerHTML = "";
@@ -39,12 +39,16 @@
     }
     const statuses = ["awaiting_quote", "awaiting_payment", "paid", "processing", "ready_for_pickup", "shipped", "completed", "cancelled"];
     ordersList.innerHTML = result.data.length ? result.data.map(function (order) {
+      const callNumber = order.phone && order.phone !== order.whatsapp_phone
+        ? "<br>Call: " + HK.escapeHtml(order.phone)
+        : "";
       const itemLines = (order.items || []).map(function (item) {
         return HK.escapeHtml(item.name) + " · " + HK.escapeHtml(item.size) + " · " + item.quantity;
       }).join("<br>");
       return '<article class="order-card"><header><h3>' + HK.escapeHtml(order.order_reference) +
         '</h3><span>' + HK.escapeHtml(new Date(order.created_at).toLocaleString("en-ZA")) + "</span></header>" +
-        "<p><strong>" + HK.escapeHtml(order.customer_name) + "</strong> · " + HK.escapeHtml(order.phone) +
+        "<p><strong>" + HK.escapeHtml(order.customer_name) + "</strong>" +
+        callNumber + "<br>WhatsApp: " + HK.escapeHtml(order.whatsapp_phone) +
         "<br>" + HK.escapeHtml(order.email) + "<br>" + HK.escapeHtml(order.fulfilment) + ": " +
         HK.escapeHtml(order.fulfilment_details) + "</p><p>" + itemLines + "</p><p>Items: " + HK.money(order.subtotal) +
         " · Delivery: " + (order.delivery_fee == null ? "to confirm" : HK.money(order.delivery_fee)) +

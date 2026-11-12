@@ -65,9 +65,9 @@
 
   function databaseMessage() {
     if (!config.supabaseUrl || !config.supabaseAnonKey) {
-      return "The store is not connected to its order system yet. Please check back soon.";
+      return "The store is not connected to its account and order system yet. Please check back soon.";
     }
-    if (!client) return "The order service could not load. Check your connection and try again.";
+    if (!client) return "The account and order service could not load. Check your connection and try again.";
     return "";
   }
 

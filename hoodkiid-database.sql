@@ -6,9 +6,51 @@ create table if not exists public.admin_users (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.customer_profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  first_name text not null check (length(first_name) between 1 and 80),
+  last_name text not null check (length(last_name) between 1 and 80),
+  whatsapp_phone text not null check (length(whatsapp_phone) between 7 and 40),
+  call_phone text check (call_phone is null or length(call_phone) between 7 and 40),
+  created_at timestamptz not null default now()
+);
+
 alter table public.admin_users add column if not exists role text not null default 'admin';
 alter table public.admin_users drop constraint if exists admin_users_role_check;
 alter table public.admin_users add constraint admin_users_role_check check (role in ('owner', 'admin'));
+
+create or replace function public.create_customer_profile_for_auth_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  first_name_value text;
+  last_name_value text;
+  whatsapp_value text;
+  call_value text;
+begin
+  first_name_value := trim(coalesce(new.raw_user_meta_data->>'first_name', ''));
+  last_name_value := trim(coalesce(new.raw_user_meta_data->>'last_name', ''));
+  whatsapp_value := trim(coalesce(new.raw_user_meta_data->>'whatsapp_phone', ''));
+  call_value := nullif(trim(coalesce(new.raw_user_meta_data->>'call_phone', '')), '');
+  if length(first_name_value) between 1 and 80
+     and length(last_name_value) between 1 and 80
+     and length(whatsapp_value) between 7 and 40
+     and (call_value is null or length(call_value) between 7 and 40) then
+    insert into public.customer_profiles (user_id, first_name, last_name, whatsapp_phone, call_phone)
+    values (new.id, first_name_value, last_name_value, whatsapp_value, call_value)
+    on conflict (user_id) do nothing;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists create_customer_profile_after_signup on auth.users;
+create trigger create_customer_profile_after_signup
+  after insert on auth.users
+  for each row execute function public.create_customer_profile_for_auth_user();
 
 create or replace function public.is_admin()
 returns boolean
@@ -57,9 +99,11 @@ create table if not exists public.product_variants (
 
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid(),
+  customer_id uuid references auth.users(id) on delete set null,
   order_reference text not null unique,
   customer_name text not null,
   phone text not null,
+  whatsapp_phone text not null default '',
   email text not null,
   fulfilment text not null check (fulfilment in ('delivery', 'pickup')),
   delivery_zone text,
@@ -75,6 +119,15 @@ create table if not exists public.orders (
   check (order_status <> 'awaiting_quote' or (payment_status = 'awaiting_payment' and delivery_fee is null)),
   check (order_status not in ('paid', 'processing', 'ready_for_pickup', 'shipped', 'completed') or (payment_status = 'verified' and total is not null))
 );
+
+alter table public.orders add column if not exists customer_id uuid references auth.users(id) on delete set null;
+alter table public.orders add column if not exists whatsapp_phone text not null default '';
+update public.orders set whatsapp_phone = phone where whatsapp_phone = '';
+update public.orders orders
+  set customer_id = users.id
+  from auth.users users
+  where orders.customer_id is null and lower(orders.email) = lower(users.email);
+create index if not exists orders_customer_id_created_at_idx on public.orders (customer_id, created_at desc);
 
 create table if not exists public.payment_accounts (
   id uuid primary key default gen_random_uuid(),
@@ -138,10 +191,9 @@ begin
 end;
 $$;
 
+drop function if exists public.create_order(text, text, text, text, text, uuid, text, jsonb);
+
 create or replace function public.create_order(
-  p_customer_name text,
-  p_phone text,
-  p_email text,
   p_fulfilment text,
   p_delivery_zone text,
   p_pickup_location_id uuid,
@@ -154,6 +206,9 @@ security definer
 set search_path = ''
 as $$
 declare
+  customer_user_id uuid := auth.uid();
+  customer_profile public.customer_profiles%rowtype;
+  customer_email text := auth.jwt()->>'email';
   item jsonb;
   variant_row public.product_variants%rowtype;
   product_row public.products%rowtype;
@@ -165,10 +220,16 @@ declare
   next_status text;
   next_fee numeric(10,2);
 begin
-  if length(trim(coalesce(p_customer_name, ''))) not between 2 and 120
-     or length(trim(coalesce(p_phone, ''))) not between 7 and 40
-     or length(trim(coalesce(p_email, ''))) not between 5 and 254
-     or trim(coalesce(p_email, '')) !~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'
+  if customer_user_id is null then
+    raise exception 'Please sign in before placing an order';
+  end if;
+  select * into customer_profile from public.customer_profiles
+    where user_id = customer_user_id;
+  if not found then
+    raise exception 'Please complete your account contact details before placing an order';
+  end if;
+  if length(trim(coalesce(customer_email, ''))) not between 5 and 254
+     or customer_email !~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'
      or p_fulfilment is null
      or p_fulfilment not in ('delivery', 'pickup')
      or length(trim(coalesce(p_fulfilment_details, ''))) not between 3 and 500 then
@@ -233,10 +294,13 @@ begin
   end if;
 
   insert into public.orders (
-    id, order_reference, customer_name, phone, email, fulfilment, delivery_zone,
+    id, order_reference, customer_id, customer_name, phone, whatsapp_phone, email, fulfilment, delivery_zone,
     fulfilment_details, subtotal, delivery_fee, total, order_status, payment_status, items
   ) values (
-    order_id, order_ref, trim(p_customer_name), trim(p_phone), lower(trim(p_email)),
+    order_id, order_ref, customer_user_id,
+    trim(customer_profile.first_name || ' ' || customer_profile.last_name),
+    coalesce(nullif(trim(customer_profile.call_phone), ''), trim(customer_profile.whatsapp_phone)),
+    trim(customer_profile.whatsapp_phone), lower(trim(customer_email)),
     p_fulfilment, case when p_fulfilment = 'delivery' then p_delivery_zone else null end,
     trim(p_fulfilment_details), order_subtotal, next_fee,
     case when next_fee is null then null else order_subtotal + next_fee end,
@@ -349,6 +413,7 @@ end;
 $$;
 
 alter table public.admin_users enable row level security;
+alter table public.customer_profiles enable row level security;
 alter table public.products enable row level security;
 alter table public.product_variants enable row level security;
 alter table public.orders enable row level security;
@@ -357,6 +422,9 @@ alter table public.pickup_locations enable row level security;
 alter table public.subscribers enable row level security;
 
 drop policy if exists "Admins can read admin assignments" on public.admin_users;
+drop policy if exists "Customers can read own profile" on public.customer_profiles;
+drop policy if exists "Customers can create own profile" on public.customer_profiles;
+drop policy if exists "Customers can update own profile" on public.customer_profiles;
 drop policy if exists "public read products" on public.products;
 drop policy if exists "public place orders" on public.orders;
 drop policy if exists "Anyone can view active products" on public.products;
@@ -365,6 +433,7 @@ drop policy if exists "Anyone can view available product variants" on public.pro
 drop policy if exists "Admins manage product variants" on public.product_variants;
 drop policy if exists "Admins can view orders" on public.orders;
 drop policy if exists "Admins can update orders" on public.orders;
+drop policy if exists "Customers can view own orders" on public.orders;
 drop policy if exists "Anyone can view active payment accounts" on public.payment_accounts;
 drop policy if exists "Admins manage payment accounts" on public.payment_accounts;
 drop policy if exists "Anyone can view active pickup locations" on public.pickup_locations;
@@ -373,6 +442,13 @@ drop policy if exists "public subscribe" on public.subscribers;
 
 create policy "Admins can read admin assignments" on public.admin_users
   for select to authenticated using (public.is_admin() or user_id = (select auth.uid()));
+create policy "Customers can read own profile" on public.customer_profiles
+  for select to authenticated using (user_id = (select auth.uid()));
+create policy "Customers can create own profile" on public.customer_profiles
+  for insert to authenticated with check (user_id = (select auth.uid()));
+create policy "Customers can update own profile" on public.customer_profiles
+  for update to authenticated using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
 create policy "Anyone can view active products" on public.products
   for select to anon, authenticated using (active or public.is_admin());
 create policy "Admins manage products" on public.products
@@ -386,6 +462,8 @@ create policy "Admins manage product variants" on public.product_variants
   for all to authenticated using (public.is_admin()) with check (public.is_admin());
 create policy "Admins can view orders" on public.orders
   for select to authenticated using (public.is_admin());
+create policy "Customers can view own orders" on public.orders
+  for select to authenticated using (customer_id = (select auth.uid()));
 create policy "Admins can update orders" on public.orders
   for update to authenticated using (public.is_admin()) with check (public.is_admin());
 create policy "Anyone can view active payment accounts" on public.payment_accounts
@@ -399,8 +477,8 @@ create policy "Admins manage pickup locations" on public.pickup_locations
 create policy "Public can subscribe" on public.subscribers
   for insert to anon, authenticated with check (length(email) between 5 and 254);
 
-revoke all on function public.create_order(text, text, text, text, text, uuid, text, jsonb) from public;
-grant execute on function public.create_order(text, text, text, text, text, uuid, text, jsonb) to anon, authenticated;
+revoke all on function public.create_order(text, text, uuid, text, jsonb) from public, anon;
+grant execute on function public.create_order(text, text, uuid, text, jsonb) to authenticated;
 revoke all on function public.admin_create_product(text, text, text, numeric, text, text, integer) from public;
 grant execute on function public.admin_create_product(text, text, text, numeric, text, text, integer) to authenticated;
 revoke all on function public.set_order_delivery_fee(uuid, numeric) from public;
@@ -415,4 +493,5 @@ grant execute on function public.admin_revoke_user(uuid) to authenticated;
 grant select on public.products, public.product_variants, public.payment_accounts, public.pickup_locations to anon, authenticated;
 grant select, update on public.orders to authenticated;
 grant select on public.admin_users to authenticated;
+grant select, insert, update on public.customer_profiles to authenticated;
 grant insert on public.subscribers to anon, authenticated;
