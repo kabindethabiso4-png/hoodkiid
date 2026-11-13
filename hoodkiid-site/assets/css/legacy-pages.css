@@ -1,0 +1,51 @@
+:root{--ink:#000;--paper:#fff;--white:#fff;--line:#000;--muted:#555}
+body{background:#fff;color:#000;font-family:"Space Grotesk",system-ui,sans-serif}
+.site-header{position:sticky;top:0;height:64px;min-height:64px;padding:0 5vw;background:#fff;color:#000;border-bottom:2px solid #000}
+.wordmark{font-family:Anton,Impact,sans-serif;font-size:1.7rem;letter-spacing:.05em}
+.site-header nav a,.site-footer>div a{font-size:.78rem;letter-spacing:.14em}
+.button{border:2px solid #000;font-size:.78rem;letter-spacing:.12em}
+.button-dark{background:#000;color:#fff}
+.button-dark:hover{background:#fff;color:#000}
+.button-light{background:#fff;color:#000}
+.page-main{max-width:1300px;min-height:70vh;padding:8vh 5vw}
+.page-intro{margin-bottom:36px}
+.page-intro h1,.section-heading h2{font-family:Anton,Impact,sans-serif;font-weight:400;text-transform:uppercase;line-height:.95}
+.page-intro h1{font-size:clamp(2.8rem,9vw,7rem)}
+.page-intro>p:last-child{color:#555}
+.panel,.order-card,.admin-item{background:#fff;border:2px solid #000;box-shadow:6px 6px 0 #000}
+.field{border:2px solid #000;border-radius:0;background:#fff;color:#000}
+.field:focus{outline:2px solid #555}
+.tab{border:2px solid #000;border-radius:0;background:#fff;color:#000;letter-spacing:.1em}
+.tab.active{background:#000;color:#fff}
+.notice{border:2px solid #000;background:#fff}
+.muted,.site-footer small{color:#555}
+.site-footer{background:#fff;border-top:2px solid #000}
+.site-footer .wordmark{font-size:1.7rem}
+.order-code{background:#000;color:#fff}
+.admin-form h3,.order-card h3{font-family:Anton,Impact,sans-serif;font-weight:400;text-transform:uppercase}
+.privacy-acknowledgement{display:flex!important;align-items:flex-start;gap:10px;font-size:.82rem!important;line-height:1.5}
+.privacy-acknowledgement input{margin-top:3px}
+.privacy-acknowledgement a,.privacy-policy a{font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.profile-summary{display:flex;align-items:center;justify-content:space-between;gap:28px;margin-bottom:22px}
+.profile-summary h2{overflow-wrap:anywhere}
+.profile-summary .eyebrow{margin-bottom:8px;color:#555}
+.profile-summary .muted{max-width:400px;margin:0}
+.profile-layout{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:22px}
+.profile-layout>.panel{min-width:0}
+.profile-layout .admin-form{max-width:none;margin:0}
+.privacy-actions p{font-size:.9rem;line-height:1.6}
+.privacy-actions hr{margin:28px 0;border:0;border-top:2px solid #000}
+.privacy-actions h3{font-size:1.45rem}
+.privacy-actions .text-link{margin-top:20px}
+.privacy-policy .panel{line-height:1.7}
+.privacy-policy .panel h2{margin:32px 0 10px;font-size:1.8rem}
+.privacy-policy .panel h2:first-of-type{margin-top:28px}
+.privacy-policy .panel p{font-size:.94rem}
+.product-admin-images{width:100%;display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding-top:12px;border-top:1px solid #aaa}
+.product-admin-item{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start}
+.product-admin-item .product-admin-images,.product-admin-item .variant-list{grid-column:1/-1;width:100%}
+.product-admin-images label{width:100%;margin:4px 0 0}
+.product-admin-images .field{max-width:420px}
+.product-admin-thumbnail{width:70px;height:84px;object-fit:cover;border:1px solid #000}
+@media(max-width:760px){.site-header{align-items:center;flex-direction:row}.site-header nav{width:auto}.site-header nav a{font-size:.65rem}.page-main{padding:7vh 5vw}}
+@media(max-width:760px){.profile-layout{grid-template-columns:1fr}.profile-summary{align-items:flex-start;flex-direction:column;gap:4px}.product-admin-item{display:flex}.product-admin-images .field{max-width:100%}}

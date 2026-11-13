@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111111">
+  <title>My profile — HOODKIID</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/site.css">
+  <link rel="stylesheet" href="assets/css/legacy-pages.css">
+  <script src="assets/js/config.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" defer></script>
+  <script src="assets/js/common.js" defer></script>
+  <script src="assets/js/profile.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="../hoodkiid-storefront.html">HOODKIID</a>
+    <nav aria-label="Main navigation">
+      <a href="../hoodkiid-storefront.html#shop">Shop</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="admin.html" id="adminLink" hidden>Admin workspace</a>
+      <button class="button button-dark" id="profileSignOut" type="button" hidden>Sign out</button>
+    </nav>
+  </header>
+  <main class="page-main">
+    <section class="page-intro">
+      <p class="eyebrow">Your HOODKIID account</p>
+      <h1>Your profile.</h1>
+      <p id="profileWelcome">Manage your details, keep up with orders, and control your personal information.</p>
+    </section>
+    <div class="notice" id="profileNotice" role="status" aria-live="polite">Checking your sign-in…</div>
+    <div id="profileWorkspace" hidden>
+      <section class="panel profile-summary">
+        <div>
+          <p class="eyebrow">Signed in as</p>
+          <h2 id="profileEmail"></h2>
+        </div>
+        <p class="muted">Your profile is ready. You can update your contact details at any time.</p>
+      </section>
+      <section class="profile-layout">
+        <section class="panel">
+          <h2>Contact details</h2>
+          <form id="profileForm" class="admin-form">
+            <label for="profileFirstName">Name</label><input class="field" id="profileFirstName" required maxlength="80" autocomplete="given-name">
+            <label for="profileLastName">Surname</label><input class="field" id="profileLastName" required maxlength="80" autocomplete="family-name">
+            <label for="profileCallPhone">Call number <span class="muted">(optional)</span></label><input class="field" id="profileCallPhone" type="tel" minlength="7" maxlength="40" autocomplete="tel">
+            <label for="profileWhatsappPhone">WhatsApp number</label><input class="field" id="profileWhatsappPhone" type="tel" required minlength="7" maxlength="40" autocomplete="tel">
+            <button class="button button-dark" id="saveProfile" type="submit">Update details</button>
+            <p class="form-message" id="profileMessage" role="status" aria-live="polite"></p>
+          </form>
+        </section>
+        <section class="panel privacy-actions">
+          <h2>Your information</h2>
+          <p>Request a portable copy of the account, contact, order and newsletter information associated with this sign-in.</p>
+          <button class="button button-light" id="downloadData" type="button">Download my information</button>
+          <hr>
+          <h3>Request account deletion</h3>
+          <p>We will review your request and contact you. Some transaction records may need to be retained where the law requires it.</p>
+          <button class="button button-light" id="requestDeletion" type="button">Request account deletion</button>
+          <p class="form-message" id="privacyMessage" role="status" aria-live="polite"></p>
+          <a class="text-link" href="privacy.html">Read the Privacy Policy ↗</a>
+        </section>
+      </section>
+      <section class="panel">
+        <div class="admin-heading"><h2>Order history</h2><button class="button button-light" id="refreshCustomerOrders" type="button">Refresh</button></div>
+        <p class="muted">Order and payment updates from the HOODKIID team appear here.</p>
+        <div id="customerOrders" class="orders-list" aria-live="polite"></div>
+      </section>
+    </div>
+  </main>
+  <footer class="site-footer"><a class="wordmark" href="../hoodkiid-storefront.html">HOODKIID</a><small>© <span data-year></span> HOODKIID.</small></footer>
+</body>
+</html>
