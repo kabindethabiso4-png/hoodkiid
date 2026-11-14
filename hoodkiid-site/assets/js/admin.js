@@ -11,7 +11,9 @@
   const maxProductImageBytes = 8 * 1024 * 1024;
   const allowedImageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
   const panels = {
+    analytics: document.getElementById("analyticsPanel"),
     orders: document.getElementById("ordersPanel"),
+    reviews: document.getElementById("reviewsPanel"),
     products: document.getElementById("productsPanel"),
     accounts: document.getElementById("accountsPanel"),
     pickup: document.getElementById("pickupPanel"),
@@ -101,7 +103,8 @@
         ? "<br>Call: " + HK.escapeHtml(order.phone)
         : "";
       const itemLines = (order.items || []).map(function (item) {
-        return HK.escapeHtml(item.name) + " · " + HK.escapeHtml(item.size) + " · " + item.quantity;
+        const options = [item.size, item.color].filter(Boolean).map(HK.escapeHtml).join(" / ");
+        return HK.escapeHtml(item.name) + " · " + options + " · " + item.quantity;
       }).join("<br>");
       return '<article class="order-card"><header><h3>' + HK.escapeHtml(order.order_reference) +
         '</h3><span>' + HK.escapeHtml(new Date(order.created_at).toLocaleString("en-ZA")) + "</span></header>" +
@@ -237,6 +240,114 @@
     }).join("") || "<p>No privacy requests have been received.</p>";
   }
 
+  async function loadAnalytics() {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const monthStart = new Date(now);
+    monthStart.setDate(monthStart.getDate() - 29);
+    monthStart.setHours(0, 0, 0, 0);
+    const results = await Promise.all([
+      HK.client.from("website_visits").select("created_at,path")
+        .gte("created_at", monthStart.toISOString()).order("created_at", { ascending: false }).limit(10000),
+      HK.client.rpc("admin_list_open_carts"),
+      HK.client.from("orders").select("created_at,total,payment_status")
+        .gte("created_at", monthStart.toISOString()).limit(10000)
+    ]);
+    if (results.some(function (result) { return result.error; })) {
+      showNotice("Could not load store analysis. Check the analytics and customer-cart database setup.", "error");
+      return;
+    }
+    const visits = results[0].data || [];
+    const carts = results[1].data || [];
+    const orders = results[2].data || [];
+    document.getElementById("visitsToday").textContent = String(visits.filter(function (visit) {
+      return new Date(visit.created_at) >= todayStart;
+    }).length);
+    document.getElementById("visitsMonth").textContent = String(visits.length);
+    document.getElementById("openCartCount").textContent = String(carts.length);
+    document.getElementById("ordersMonth").textContent = String(orders.length);
+    document.getElementById("salesMonth").textContent = HK.money(orders.reduce(function (total, order) {
+      return order.payment_status === "verified" ? total + Number(order.total || 0) : total;
+    }, 0));
+
+    function dateKey(date) {
+      return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" +
+        String(date.getDate()).padStart(2, "0");
+    }
+    const dailyVisits = {};
+    for (let offset = 13; offset >= 0; offset -= 1) {
+      const date = new Date(todayStart);
+      date.setDate(date.getDate() - offset);
+      dailyVisits[dateKey(date)] = { label: date.toLocaleDateString("en-ZA", { day: "numeric", month: "short" }), count: 0 };
+    }
+    visits.forEach(function (visit) {
+      const key = dateKey(new Date(visit.created_at));
+      if (dailyVisits[key]) dailyVisits[key].count += 1;
+    });
+    const maxVisits = Math.max.apply(null, Object.keys(dailyVisits).map(function (key) { return dailyVisits[key].count; }).concat([1]));
+    document.getElementById("visitsChart").innerHTML = Object.keys(dailyVisits).map(function (key) {
+      const day = dailyVisits[key];
+      const height = Math.max(3, Math.round(day.count / maxVisits * 100));
+      return '<div class="visit-day" title="' + HK.escapeHtml(day.label) + ': ' + day.count + ' visits"><strong>' +
+        day.count + '</strong><span class="visit-bar" style="height:' + height + '%"></span><small>' +
+        HK.escapeHtml(day.label) + "</small></div>";
+    }).join("");
+    const popularPages = {};
+    visits.forEach(function (visit) {
+      popularPages[visit.path] = (popularPages[visit.path] || 0) + 1;
+    });
+    document.getElementById("popularPages").innerHTML = Object.keys(popularPages).sort(function (a, b) {
+      return popularPages[b] - popularPages[a];
+    }).slice(0, 8).map(function (path) {
+      return '<div class="popular-page"><span>' + HK.escapeHtml(path) + '</span><strong>' + popularPages[path] + "</strong></div>";
+    }).join("") || "<p>No page views have been recorded yet.</p>";
+    document.getElementById("openCartsList").innerHTML = carts.length ? carts.map(function (cart) {
+      const name = [cart.first_name, cart.last_name].filter(Boolean).join(" ") || cart.email || cart.user_id;
+      const items = Array.isArray(cart.items) ? cart.items.map(function (item) {
+        const options = [item.size, item.color].filter(Boolean).map(HK.escapeHtml).join(" / ");
+        return HK.escapeHtml(item.name || "Product") + " · " + options + " · " + Number(item.qty || item.quantity || 0);
+      }).join("<br>") : "Cart details unavailable";
+      return '<article class="admin-item"><div><h3>' + HK.escapeHtml(name) + '</h3><p>' + HK.escapeHtml(cart.email || cart.user_id) +
+        "<br>" + items + "<br>Updated " + HK.escapeHtml(new Date(cart.updated_at).toLocaleString("en-ZA")) +
+        "</p></div></article>";
+    }).join("") : "<p>No signed-in customers currently have an open cart.</p>";
+  }
+
+  async function loadReviews() {
+    const list = document.getElementById("reviewsList");
+    const result = await HK.client.from("product_reviews")
+      .select("id,product_id,customer_id,rating,review_text,image_urls,status,admin_reply,created_at,products(name)")
+      .order("created_at", { ascending: false }).limit(200);
+    if (result.error) {
+      list.innerHTML = "";
+      showNotice("Could not load customer reviews.", "error");
+      return;
+    }
+    const statuses = ["pending", "approved", "rejected"];
+    list.innerHTML = (result.data || []).map(function (review) {
+      const product = Array.isArray(review.products) ? review.products[0] : review.products;
+      const imageBase = String(HK.config.supabaseUrl || "").replace(/\/$/, "") +
+        "/storage/v1/object/public/product-review-images/";
+      const images = (review.image_urls || []).filter(function (image) {
+        return typeof image === "string" && image.indexOf(imageBase) === 0;
+      }).map(function (image) {
+        return '<img class="review-admin-image" src="' + HK.escapeHtml(image) + '" alt="Customer review photo" loading="lazy">';
+      }).join("");
+      return '<article class="order-card admin-review-card"><header><h3>' + HK.escapeHtml(product ? product.name : "Product") +
+        '</h3><span>' + HK.escapeHtml(new Date(review.created_at).toLocaleString("en-ZA")) + "</span></header>" +
+        '<p><strong>' + review.rating + " / 5</strong> · Account " + HK.escapeHtml(review.customer_id) + "</p><p>" +
+        HK.escapeHtml(review.review_text) + "</p>" + (images ? '<div class="review-images">' + images + "</div>" : "") +
+        '<label for="review-status-' + HK.escapeHtml(review.id) + '">Publication status</label><select class="field" id="review-status-' +
+        HK.escapeHtml(review.id) + '" data-review-status="' + HK.escapeHtml(review.id) + '">' + statuses.map(function (status) {
+          return '<option value="' + status + '"' + (review.status === status ? " selected" : "") + ">" +
+            HK.escapeHtml(status.replaceAll("_", " ")) + "</option>";
+        }).join("") + '</select><label for="review-reply-' + HK.escapeHtml(review.id) + '">Admin reply</label><textarea class="field" id="review-reply-' +
+        HK.escapeHtml(review.id) + '" data-review-reply="' + HK.escapeHtml(review.id) + '" rows="3" maxlength="1500">' +
+        HK.escapeHtml(review.admin_reply || "") + '</textarea><button class="button button-dark" type="button" data-save-review="' +
+        HK.escapeHtml(review.id) + '">Save review</button></article>';
+    }).join("") || "<p>No customer reviews have been submitted.</p>";
+  }
+
   async function initialize() {
     const unavailable = HK.databaseMessage();
     if (unavailable) {
@@ -263,7 +374,9 @@
     teamTab.hidden = !isOwner;
     notice.hidden = true;
     workspace.hidden = false;
+    await loadAnalytics();
     await loadOrders();
+    await loadReviews();
     await loadProducts();
     await loadAccounts();
     await loadPickupLocations();
@@ -283,6 +396,8 @@
   });
 
   document.getElementById("refreshOrders").addEventListener("click", loadOrders);
+  document.getElementById("refreshAnalytics").addEventListener("click", loadAnalytics);
+  document.getElementById("refreshReviews").addEventListener("click", loadReviews);
   document.getElementById("refreshPrivacyRequests").addEventListener("click", loadPrivacyRequests);
   signOut.addEventListener("click", async function () {
     const result = await HK.client.auth.signOut();
@@ -326,6 +441,27 @@
     }
     showNotice("Order updated.", "");
     await loadOrders();
+  });
+
+  document.getElementById("reviewsList").addEventListener("click", async function (event) {
+    const button = event.target.closest("[data-save-review]");
+    if (!button) return;
+    const id = button.dataset.saveReview;
+    const reply = document.querySelector('[data-review-reply="' + id + '"]').value.trim();
+    const status = document.querySelector('[data-review-status="' + id + '"]').value;
+    button.disabled = true;
+    const result = await HK.client.from("product_reviews").update({
+      status: status,
+      admin_reply: reply || null,
+      replied_at: reply ? new Date().toISOString() : null
+    }).eq("id", id);
+    button.disabled = false;
+    if (result.error) {
+      showNotice("Could not save this review: " + result.error.message, "error");
+      return;
+    }
+    showNotice("Review updated.", "");
+    await loadReviews();
   });
 
   document.getElementById("productForm").addEventListener("submit", async function (event) {

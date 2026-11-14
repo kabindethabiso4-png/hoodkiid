@@ -29,6 +29,9 @@
   summary.innerHTML = "<h2>Reference</h2><p class=\"order-code\">" + HK.escapeHtml(order.reference) +
     "</p><p>Items subtotal: <strong>" + HK.money(order.subtotal) + "</strong></p><p>Order status: " +
     HK.escapeHtml(String(order.status).replaceAll("_", " ")) + "</p>";
+  if (["awaiting_quote", "awaiting_payment"].includes(order.status)) {
+    document.getElementById("editOrderPrompt").hidden = false;
+  }
 
   const phoneDigits = String(HK.config.whatsappPhone || "").replace(/\D/g, "");
   const phone = phoneDigits.length === 10 && phoneDigits.charAt(0) === "0"

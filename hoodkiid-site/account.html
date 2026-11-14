@@ -29,7 +29,8 @@
           <label class="privacy-acknowledgement"><input id="privacyAcknowledgement" type="checkbox" required> I have read the <a href="privacy.html">Privacy Policy</a>.</label>
         </div>
         <label for="accountEmail">Email</label><input class="field" id="accountEmail" type="email" autocomplete="email" required maxlength="254">
-        <label for="accountPassword">Password</label><input class="field" id="accountPassword" type="password" autocomplete="current-password" required minlength="8" maxlength="128">
+        <label for="accountPassword">Password</label>
+        <div class="field-with-action"><input class="field" id="accountPassword" type="password" autocomplete="current-password" required minlength="8" maxlength="128"><button class="button button-light password-toggle" id="togglePassword" type="button" aria-controls="accountPassword" aria-pressed="false">Show</button></div>
         <button class="button button-dark button-wide" id="accountSubmit" type="submit">Sign in</button>
         <p class="form-message" id="accountMessage" role="status" aria-live="polite"></p>
       </form>

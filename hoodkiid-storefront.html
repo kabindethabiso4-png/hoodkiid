@@ -85,16 +85,17 @@ h2{font-size:clamp(2.8rem,9vw,7rem)}
 .chip.on,.chip:hover{background:var(--fg);color:var(--bg)}
 .sq{background:none;color:var(--fg);border:2px solid var(--fg);padding:9px 14px;font:inherit;font-size:.85rem;width:min(100%,200px)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:26px}
-.card{border:2px solid var(--fg);background:var(--bg);box-shadow:6px 6px 0 var(--fg);opacity:0;transform:translateY(50px);transition:opacity .8s,transform .9s cubic-bezier(.2,.8,.2,1),box-shadow .25s;transition-delay:calc(var(--d)*100ms)}
+.card{border:2px solid var(--fg);background:var(--bg);box-shadow:6px 6px 0 var(--fg);opacity:0;transform:translateY(50px);transition:opacity .8s,transform .9s cubic-bezier(.2,.8,.2,1),box-shadow .25s;transition-delay:calc(var(--d)*100ms);cursor:pointer}
 .card.in{opacity:1;transform:none}
 .card.in:hover{transform:translate(-4px,-4px);box-shadow:11px 11px 0 var(--fg);transition-delay:0s;transition-duration:.25s}
 .tile{aspect-ratio:4/5;display:grid;place-items:center;font-family:Anton,Impact,sans-serif;font-size:2.2rem;letter-spacing:.08em;position:relative;overflow:hidden;filter:grayscale(1);background-image:radial-gradient(rgba(255,255,255,.22) 1.6px,transparent 1.8px);background-size:14px 14px;border-bottom:2px solid var(--fg)}
-.tile.has-images{filter:none}.product-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.product-thumbnails{position:absolute;right:9px;bottom:9px;display:flex;gap:6px;max-width:85%;overflow:auto}.product-thumbnails button{width:42px;height:48px;flex:0 0 42px;padding:0;border:2px solid #fff;background:#111;box-shadow:0 0 0 1px #000}.product-thumbnails button[aria-pressed="true"]{border-color:var(--fg);box-shadow:0 0 0 2px var(--bg)}.product-thumbnails img{width:100%;height:100%;object-fit:cover}
+.tile.has-images{filter:none}.product-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity .45s,transform .7s}.product-photo.is-changing{opacity:.15;transform:scale(1.04)}.product-thumbnails{position:absolute;right:9px;bottom:9px;display:flex;gap:6px;max-width:85%;overflow:auto}.product-thumbnails button{width:42px;height:48px;flex:0 0 42px;padding:0;border:2px solid #fff;background:#111;box-shadow:0 0 0 1px #000}.product-thumbnails button[aria-pressed="true"]{border-color:var(--fg);box-shadow:0 0 0 2px var(--bg)}.product-thumbnails img{width:100%;height:100%;object-fit:cover}
 .tile em{transition:transform .5s,-webkit-text-stroke .3s;font-style:normal}
 .card:hover .tile em{transform:scale(1.18) rotate(-4deg)}
 .tile small{position:absolute;top:12px;left:-6px;font:700 .7rem 'Space Grotesk',sans-serif;letter-spacing:.15em;background:#fff;color:#000;padding:5px 12px;transform:rotate(-4deg);border:2px solid #000}
 .info{padding:16px;display:grid;gap:12px}
 .info h3{font-size:1.3rem}
+.product-hover-details{display:none;gap:8px;font-size:.78rem;line-height:1.5}.product-hover-details p{margin:0}.product-hover-details strong{letter-spacing:.05em;text-transform:uppercase}.card:hover .product-hover-details,.card:focus-within .product-hover-details{display:grid}.product-open{justify-self:start;padding:0;border:0;border-bottom:1px solid currentColor;background:none;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 select{background:var(--bg);color:var(--fg);border:2px solid var(--fg);padding:7px;font:inherit}
 .add{border:2px solid var(--fg);background:var(--fg);color:var(--bg);padding:11px;font-weight:700;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;transition:.25s}
@@ -125,6 +126,7 @@ select{background:var(--bg);color:var(--fg);border:2px solid var(--fg);padding:7
 .rvs{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:26px;margin-top:40px}
 .rv{margin:0;padding:28px;border:2px solid var(--fg);box-shadow:6px 6px 0 var(--fg);font-size:1.2rem;line-height:1.5}
 .rv cite{display:block;margin-top:16px;font-size:.78rem;opacity:.7;font-style:normal;letter-spacing:.12em;text-transform:uppercase}
+.review-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}.review-actions .btn{font-size:.72rem}
 .faq{max-width:780px;margin-top:36px}
 details{border-bottom:2px solid var(--fg);padding:20px 0}
 summary{cursor:pointer;font-weight:700;font-size:1.1rem;list-style:none;display:flex;justify-content:space-between}
@@ -160,11 +162,24 @@ body.cart #drawer{transform:none}body.cart #veil{opacity:1;visibility:visible}
 #items{flex:1;overflow:auto;margin:16px 0}
 .it{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:2px solid var(--fg);font-size:.9rem}
 .it button{background:none;border:2px solid var(--fg);width:28px;height:28px}
+.it>div{min-width:0;flex:1}.it small{display:block;margin-top:4px;opacity:.7;font-size:.72rem;line-height:1.4}
+.cart-variant-editor{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.cart-variant-editor label{display:grid;gap:4px;font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.cart-variant-editor select{width:100%;min-width:0;padding:5px;border-width:1px;font-size:.72rem}
+.cart-quantity{display:flex;align-items:center;gap:5px;flex-shrink:0}
 #drawer form{display:grid;gap:8px}
 #drawer input,#drawer textarea{padding:11px;border:2px solid var(--fg);background:var(--bg);color:var(--fg);font:inherit;width:100%}
 .x{background:none;border:0;font-size:1.7rem}
 #toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translate(-50%,300%);background:#fff;color:#000;border:2px solid #000;box-shadow:5px 5px 0 #000;padding:12px 20px;z-index:140;transition:transform .5s cubic-bezier(.2,.9,.3,1.3);max-width:88%;text-align:center;font-size:.85rem;font-weight:700}
 #toast.show{transform:translate(-50%,0)}
+.product-modal[hidden]{display:none}.product-modal:not([hidden]){display:block}.product-modal{position:fixed;inset:0;z-index:210;overflow:auto;background:var(--bg);color:var(--fg)}body.product-open{overflow:hidden}
+.product-dialog{position:relative;max-width:1180px;min-height:calc(100dvh - 32px);margin:16px auto;padding:clamp(20px,4vw,48px);background:var(--bg)}
+.product-modal-close{position:sticky;top:10px;z-index:2;float:right;width:44px;height:44px;border:2px solid var(--fg);background:var(--bg);font-size:1.5rem}
+.product-detail-layout{clear:both;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:clamp(24px,5vw,70px);align-items:start}
+.product-modal-image{aspect-ratio:4/5;overflow:hidden;background:#e8e7e2}.product-modal-image img{width:100%;height:100%;object-fit:contain;transition:opacity .35s,transform .5s}.product-modal-image img.is-changing{opacity:.2;transform:scale(1.02)}
+.product-modal-thumbnails{display:flex;gap:8px;margin-top:12px;overflow-x:auto}.product-modal-thumbnails button{width:64px;height:76px;flex:0 0 64px;padding:0;border:2px solid var(--line);background:var(--bg)}.product-modal-thumbnails button[aria-pressed="true"]{border-color:var(--fg)}.product-modal-thumbnails img{width:100%;height:100%;object-fit:cover}
+.product-modal-info{padding:3vh 0}.product-modal-info .eyebrow{opacity:.65}.product-modal-info h2{font-size:clamp(2.4rem,5vw,5.5rem)}.product-modal-price{margin:18px 0;font-size:1.3rem;font-weight:700}.product-modal-description{max-width:58ch;line-height:1.7;white-space:pre-line}.product-modal-options{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:28px}.product-modal-options label{display:grid;gap:7px;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.product-modal-options select{width:100%;min-height:46px}.product-stock{min-height:1.3em;color:var(--muted);font-size:.82rem}.product-modal-info .add{width:100%;min-height:50px;margin-top:14px}
+@media(max-width:760px){.product-dialog{min-height:100dvh;margin:0;padding:16px}.product-detail-layout{grid-template-columns:1fr;gap:10px}.product-modal-image{aspect-ratio:4/4.5;max-height:54svh}.product-modal-info{padding:10px 0 28px}.product-modal-info h2{font-size:clamp(2.5rem,12vw,4.2rem)}.product-modal-options{margin-top:20px}}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important;transition-delay:0s!important}.wrap,.card,.sw i{opacity:1!important;transform:none!important}}
 </style>
 </head>
@@ -240,11 +255,8 @@ body.cart #drawer{transform:none}body.cart #veil{opacity:1;visibility:visible}
 <section class="scene inv" id="reviews" data-scene>
  <div class="wrap">
   <h2 class="split">Kiids Say</h2>
-  <div class="rvs">
-    <blockquote class="rv">“Heavy fabric, crazy fit. Got stopped three times in one day.”<cite>— Thabo, Soshanguve</cite></blockquote>
-    <blockquote class="rv">“The chrome print is even better in person. Real ones know.”<cite>— Lerato, Pretoria</cite></blockquote>
-    <blockquote class="rv">“Fleece is my daily now. Delivery was quick too.”<cite>— Kagiso, Mamelodi</cite></blockquote>
-  </div>
+  <div class="rvs" id="featuredReviews"><p class="note">Loading customer reviews…</p></div>
+  <div class="review-actions"><a class="btn" href="hoodkiid-site/reviews.html">Read all reviews</a><a class="btn" href="hoodkiid-site/reviews.html">Write a review</a></div>
  </div>
 </section>
 
@@ -268,7 +280,29 @@ body.cart #drawer{transform:none}body.cart #veil{opacity:1;visibility:visible}
  </div>
 </section>
 </main>
-
+<div class="product-modal" id="productModal" hidden>
+  <section class="product-dialog" id="productDialog" role="dialog" aria-modal="true" aria-labelledby="productModalName" tabindex="-1">
+    <button class="product-modal-close" id="closeProduct" type="button" aria-label="Close product details">×</button>
+    <div class="product-detail-layout">
+      <div class="product-modal-gallery">
+        <div class="product-modal-image"><img id="productModalImage" alt=""></div>
+        <div class="product-modal-thumbnails" id="productModalThumbnails"></div>
+      </div>
+      <div class="product-modal-info">
+        <p class="eyebrow" id="productModalCategory"></p>
+        <h2 id="productModalName"></h2>
+        <p class="product-modal-price" id="productModalPrice"></p>
+        <p class="product-modal-description" id="productModalDescription"></p>
+        <div class="product-modal-options">
+          <label for="productModalSize">Size<select id="productModalSize"></select></label>
+          <label for="productModalColor">Colour<select id="productModalColor"></select></label>
+        </div>
+        <p class="product-stock" id="productModalStock" aria-live="polite"></p>
+        <button class="add" id="productModalAdd" type="button">Add to cart</button>
+      </div>
+    </div>
+  </section>
+</div>
 <footer>
   <div class="fr">
     <div>Wear if you’re real.<br>Soshanguve, South Africa</div>
@@ -285,6 +319,7 @@ body.cart #drawer{transform:none}body.cart #veil{opacity:1;visibility:visible}
 <div id="veil"></div>
 <aside id="drawer" aria-label="Cart">
   <div class="row"><h2 style="font-size:2.4rem">Your cart</h2><button class="x" id="closeCart">✕</button></div>
+  <p class="note">Review and edit sizes, colours and quantities before placing your order.</p>
   <div id="items"></div>
   <div class="row" style="margin-bottom:12px"><b>Total</b><b id="total">R0</b></div>
   <form id="co">
@@ -318,10 +353,28 @@ const demo = [
   {id:5,name:'Quarter-Zip Fleece · Pink',category:'Fleece',price:650,color:'#bbbbbb',sizes:['S','M','L']},
   {id:6,name:'Quarter-Zip Fleece · White',category:'Fleece',price:650,color:'#dddddd',sizes:['S','M','L','XL']}
 ];
-let products = demo, sb = null, cart = [], cat = 'All', Q = '', open = false, customerProfile = null;
+let products = demo, sb = null, cart = [], cat = 'All', Q = '', open = false, customerProfile = null, customerId = null;
+let selectedProductImages = {};
+try {
+  const savedImages = JSON.parse(sessionStorage.getItem('hk_product_images') || '{}');
+  if (savedImages && typeof savedImages === 'object' && !Array.isArray(savedImages)) selectedProductImages = savedImages;
+} catch (error) {
+  console.warn('Could not restore selected product images:', error);
+}
 try { if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch(e){ console.error('Could not initialize Supabase:',e); }
+if (sb) sb.from('website_visits').insert({path:(location.pathname||'/').slice(0,200)}).then(({error})=>{if(error) console.warn('Could not record this page view:',error);});
 try { cart = JSON.parse(localStorage.getItem('hk_cart') || '[]'); } catch(e){}
-const save = () => { try { localStorage.setItem('hk_cart', JSON.stringify(cart)); } catch(e){} };
+const save = () => {
+  try { localStorage.setItem('hk_cart', JSON.stringify(cart)); } catch(e){ console.error('Could not save cart locally:',e); }
+  return syncCustomerCart().catch(error=>console.error('Could not sync signed-in customer cart:',error));
+};
+async function syncCustomerCart(){
+  if(!sb||!customerId) return;
+  const result = cart.length
+    ? await sb.from('customer_carts').upsert({user_id:customerId,items:cart,updated_at:new Date().toISOString()},{onConflict:'user_id'})
+    : await sb.from('customer_carts').delete().eq('user_id',customerId);
+  if(result.error) console.warn('Could not sync signed-in customer cart:',result.error);
+}
 const toast = m => { const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove('show'),2800); };
 
 /* loader */
@@ -399,22 +452,170 @@ async function load(){
 }
 const card = (p,i) => {
   const images = Array.isArray(p.image_urls) ? p.image_urls.filter(url => typeof url === 'string' && url.startsWith('https://')) : [];
+  const currentImage = images.includes(selectedProductImages[String(p.id)]) ? selectedProductImages[String(p.id)] : images[0];
+  const colors = p.product_variants && p.product_variants.length
+    ? [...new Set(p.product_variants.filter(variant => Number(variant.stock) > 0).map(variant => variant.color).filter(Boolean))]
+    : ['Standard'];
   const gallery = images.length
-    ? `<img class="product-photo" src="${esc(images[0])}" alt="${esc(p.name)}" loading="lazy">${images.length>1?`<div class="product-thumbnails">${images.map((url,index)=>`<button type="button" data-product-image="${esc(p.id)}" data-image-url="${esc(url)}" aria-label="Show ${esc(p.name)} image ${index+1}" aria-pressed="${index===0}"><img src="${esc(url)}" alt="" loading="lazy"></button>`).join('')}</div>`:''}`
+    ? `<img class="product-photo" src="${esc(currentImage)}" alt="${esc(p.name)}" loading="lazy">${images.length>1?`<div class="product-thumbnails">${images.map((url,index)=>`<button type="button" data-product-image="${esc(p.id)}" data-image-url="${esc(url)}" aria-label="Show ${esc(p.name)} image ${index+1}" aria-pressed="${url===currentImage}"><img src="${esc(url)}" alt="" loading="lazy"></button>`).join('')}</div>`:''}`
     : '<em>HOODKIID</em>';
-  return `<article class="card" style="--d:${i}">
+  return `<article class="card" data-product-id="${esc(p.id)}" tabindex="0" aria-label="Open ${esc(p.name)} product details" aria-haspopup="dialog" style="--d:${i}">
   <div class="tile product-tile ${images.length?'has-images':''}" style="background-color:${/^#[0-9a-f]{3,8}$/i.test(p.color||'')?p.color:'#111'};color:${/^#(bbb|ddd)/.test(p.color||'')?'#000':'#fff'}"><small>${esc(p.category)}</small>${gallery}</div>
-  <div class="info"><h3>${esc(p.name)}</h3><div class="row"><b>R${Number(p.price)}</b><select id="s${p.id}">${p.product_variants&&p.product_variants.length?(p.product_variants.filter(v=>v.stock>0).map(v=>`<option value="${esc(v.id)}" data-size="${esc(v.size)}" data-color="${esc(v.color)}">${esc(v.size)} / ${esc(v.color)} · ${v.stock} left</option>`).join('')||'<option value="" disabled selected>Out of stock</option>'):p.sizes.map(s=>`<option>${esc(s)}</option>`).join('')}</select></div>
-  <button class="add" data-id="${p.id}" ${p.product_variants&&p.product_variants.length&&!p.product_variants.some(v=>v.stock>0)?'disabled':''}>Add to cart</button></div></article>`;
+  <div class="info"><h3>${esc(p.name)}</h3><div class="row"><b>R${Number(p.price)}</b><span>View product ↗</span></div>
+  <div class="product-hover-details"><p><strong>Description</strong><br>${esc(p.description||'Made for everyday wear.')}</p><p><strong>Colours</strong><br>${esc(colors.join(' · ')||'Standard')}</p></div>
+  <button class="product-open" type="button" data-open-product>View product</button></div></article>`;
 };
+const productModal = $('#productModal');
+const productModalImage = $('#productModalImage');
+let activeProduct = null, activeVariant = null, activeProductTrigger = null;
+const productSelections = {};
+
+function rememberProductImage(productId, url) {
+  selectedProductImages[String(productId)] = url;
+  try { sessionStorage.setItem('hk_product_images', JSON.stringify(selectedProductImages)); }
+  catch (error) { console.warn('Could not save selected product image:', error); }
+}
+
+function setProductImage(image, url) {
+  image.classList.add('is-changing');
+  window.setTimeout(() => {
+    image.src = url;
+    image.classList.remove('is-changing');
+  }, 100);
+}
+
+function renderProductMedia(product) {
+  const images = Array.isArray(product.image_urls)
+    ? product.image_urls.filter(url => typeof url === 'string' && url.startsWith('https://'))
+    : [];
+  const currentImage = images.includes(selectedProductImages[String(product.id)]) ? selectedProductImages[String(product.id)] : images[0];
+  productModalImage.hidden = !currentImage;
+  productModalImage.alt = currentImage ? product.name : '';
+  if (currentImage) productModalImage.src = currentImage;
+  $('#productModalThumbnails').innerHTML = images.length > 1 ? images.map((url,index) =>
+    `<button type="button" data-modal-image="${esc(url)}" aria-label="Show ${esc(product.name)} image ${index+1}" aria-pressed="${url===currentImage}"><img src="${esc(url)}" alt="" loading="lazy"></button>`
+  ).join('') : '';
+}
+
+function renderProductOptions(product) {
+  const sizeSelect = $('#productModalSize'), colorSelect = $('#productModalColor');
+  const variants = Array.isArray(product.product_variants) ? product.product_variants : [];
+  const available = variants.filter(variant => Number(variant.stock) > 0);
+  const saved = productSelections[String(product.id)] || {};
+  const sizes = variants.length ? [...new Set(available.map(variant => variant.size))] : (product.sizes && product.sizes.length ? product.sizes : ['Standard']);
+  const selectedSize = sizes.includes(saved.size) ? saved.size : sizes[0];
+  const colors = variants.length
+    ? [...new Set(available.map(variant => variant.color))]
+    : [product.color && !String(product.color).startsWith('#') ? product.color : 'Standard'];
+  const selectedColor = colors.includes(saved.color) ? saved.color : colors[0];
+  sizeSelect.innerHTML = sizes.length ? sizes.map(size => `<option value="${esc(size)}" ${size===selectedSize?'selected':''}>${esc(size)}</option>`).join('') : '<option value="">Unavailable</option>';
+  colorSelect.innerHTML = colors.length ? colors.map(color => `<option value="${esc(color)}" ${color===selectedColor?'selected':''}>${esc(color)}</option>`).join('') : '<option value="">Unavailable</option>';
+  sizeSelect.disabled = !sizes.length;
+  colorSelect.disabled = !colors.length;
+  activeVariant = variants.find(variant => variant.size === selectedSize && variant.color === selectedColor && Number(variant.stock) > 0) || null;
+  $('#productModalStock').textContent = variants.length
+    ? (activeVariant ? `${activeVariant.stock} available` : (selectedSize && selectedColor ? 'That size and colour combination is unavailable' : 'Currently out of stock'))
+    : 'Stock availability is confirmed at checkout.';
+  $('#productModalAdd').disabled = variants.length > 0 && !activeVariant;
+  productSelections[String(product.id)] = { size: selectedSize, color: selectedColor };
+}
+
+function openProduct(productId, trigger) {
+  const product = prod(productId);
+  if (!product) return;
+  activeProduct = product;
+  activeProductTrigger = trigger || document.activeElement;
+  $('#productModalCategory').textContent = product.category || '';
+  $('#productModalName').textContent = product.name || '';
+  $('#productModalPrice').textContent = `R${Number(product.price).toFixed(2)}`;
+  $('#productModalDescription').textContent = product.description || 'Made for everyday wear.';
+  renderProductMedia(product);
+  renderProductOptions(product);
+  productModal.hidden = false;
+  document.body.classList.add('product-open');
+  $('#productDialog').focus();
+}
+
+function closeProduct() {
+  if (productModal.hidden) return;
+  productModal.hidden = true;
+  document.body.classList.remove('product-open');
+  activeProduct = null;
+  if (activeProductTrigger && activeProductTrigger.isConnected) activeProductTrigger.focus();
+}
+
+function addActiveProductToCart() {
+  if (!activeProduct) return;
+  const product = activeProduct;
+  const variants = Array.isArray(product.product_variants) ? product.product_variants : [];
+  if (variants.length && !activeVariant) return toast('Choose an available size and colour');
+  const selection = productSelections[String(product.id)] || {};
+  const size = activeVariant ? activeVariant.size : selection.size || (product.sizes && product.sizes[0]) || 'Standard';
+  const color = activeVariant ? activeVariant.color : selection.color || '';
+  const variant_id = activeVariant ? activeVariant.id : null;
+  const existing = cart.find(item => String(item.id)===String(product.id) && item.size===size &&
+    String(item.variant_id||'')===String(variant_id||''));
+  existing ? existing.qty++ : cart.push({id:String(product.id),size,color,variant_id,name:product.name,price:Number(product.price),qty:1});
+  save();
+  renderCart();
+  closeProduct();
+  const fab=$('#fab'); fab.classList.remove('bump'); void fab.offsetWidth; fab.classList.add('bump');
+  toast('Added to cart ✓');
+}
+
 document.addEventListener('click', e => {
-  const choice = e.target.closest('[data-product-image]');
-  if(!choice) return;
-  const gallery = choice.closest('.product-tile');
-  const image = gallery && gallery.querySelector('.product-photo');
-  if(!image) return;
-  image.src = choice.dataset.imageUrl;
-  gallery.querySelectorAll('[data-product-image]').forEach(button => button.setAttribute('aria-pressed',String(button===choice)));
+  const productImage = e.target.closest('[data-product-image]');
+  if (productImage) {
+    e.preventDefault();
+    const productCard = productImage.closest('.card');
+    const image = productCard && productCard.querySelector('.product-photo');
+    rememberProductImage(productImage.dataset.productImage, productImage.dataset.imageUrl);
+    if (image) setProductImage(image, productImage.dataset.imageUrl);
+    productCard.querySelectorAll('[data-product-image]').forEach(button => button.setAttribute('aria-pressed', String(button===productImage)));
+    return;
+  }
+  const modalImageButton = e.target.closest('[data-modal-image]');
+  if (modalImageButton && activeProduct) {
+    rememberProductImage(activeProduct.id, modalImageButton.dataset.modalImage);
+    setProductImage(productModalImage, modalImageButton.dataset.modalImage);
+    $('#productModalThumbnails').querySelectorAll('[data-modal-image]').forEach(button =>
+      button.setAttribute('aria-pressed', String(button===modalImageButton)));
+    return;
+  }
+  if (e.target === productModal || e.target.closest('#closeProduct')) {
+    closeProduct();
+    return;
+  }
+  if (e.target.closest('#productModalAdd')) {
+    addActiveProductToCart();
+    return;
+  }
+  const openButton = e.target.closest('[data-open-product]');
+  const productCard = e.target.closest('.card[data-product-id]');
+  if (openButton && productCard) {
+    openProduct(productCard.dataset.productId, openButton);
+    return;
+  }
+  if (productCard && !e.target.closest('button,a,select,input')) openProduct(productCard.dataset.productId, productCard);
+});
+
+$('#productModalSize').addEventListener('change', function () {
+  if (!activeProduct) return;
+  productSelections[String(activeProduct.id)] = { size: this.value, color: $('#productModalColor').value };
+  renderProductOptions(activeProduct);
+});
+$('#productModalColor').addEventListener('change', function () {
+  if (!activeProduct) return;
+  productSelections[String(activeProduct.id)] = { size: $('#productModalSize').value, color: this.value };
+  renderProductOptions(activeProduct);
+});
+document.addEventListener('keydown', e => {
+  if (!productModal.hidden && e.key === 'Escape') closeProduct();
+  const productCard = e.target.closest && e.target.closest('.card[data-product-id]');
+  if (productCard && e.target === productCard && (e.key === 'Enter' || e.key === ' ')) {
+    e.preventDefault();
+    openProduct(productCard.dataset.productId, productCard);
+  }
 });
 function draw(){
   const cats = ['All', ...new Set(products.map(p => p.category))];
@@ -426,27 +627,60 @@ function draw(){
   $('#mw').classList.toggle('open', open && list.length>3);
   watch(); $$('#grid .card').forEach(c => c.classList.add('in'));
 }
+async function loadFeaturedReviews(){
+  const container=$('#featuredReviews');
+  if(!sb){ container.innerHTML='<p class="note">Customer reviews will appear here when the store is connected.</p>'; return; }
+  const {data,error}=await sb.rpc('list_public_product_reviews');
+  if(error){ console.error('Could not load customer reviews:',error); container.innerHTML='<p class="note">Customer reviews are temporarily unavailable.</p>'; return; }
+  const reviews=(data||[]).slice(0,3);
+  container.innerHTML=reviews.length?reviews.map(review=>`<blockquote class="rv">${esc(review.review_text)}<cite>${esc(review.customer_name)} · ${esc(review.product_name)} · ${review.rating}/5</cite></blockquote>`).join(''):'<p class="note">No customer reviews have been published yet. Be the first to share your experience.</p>';
+}
 function setOpen(v){ open=v; $('#mw').classList.toggle('open',v); $('#exp').classList.toggle('open',v); $('#expt').textContent = v ? 'Close the catalogue' : 'Open the full catalogue';
   if(v) setTimeout(() => $('#more').scrollIntoView({behavior:'smooth',block:'center'}), 450); }
 $('#exp').onclick = () => setOpen(!open);
 $('#chips').addEventListener('click', e => { const c=e.target.closest('.chip'); if(c){ cat=c.dataset.c; draw(); }});
 $('#q').addEventListener('input', e => { Q = e.target.value.trim().toLowerCase(); draw(); });
-document.addEventListener('click', e => {
-  const b = e.target.closest('.add'); if(!b) return;
-  const id = b.dataset.id, choice=$('#s'+id).selectedOptions[0], size=choice.dataset.size||choice.value, variant_id=choice.value&&choice.dataset.size?choice.value:null, f = cart.find(i => String(i.id)===String(id) && i.size===size && String(i.variant_id||'')===String(variant_id||''));
-  f ? f.qty++ : cart.push({id, size, color:choice.dataset.color||'', variant_id, name:prod(id)?.name||'', price:Number(prod(id)?.price||0), qty:1}); save(); renderCart();
-  const fab=$('#fab'); fab.classList.remove('bump'); void fab.offsetWidth; fab.classList.add('bump'); toast('Added to cart ✓');
-});
-
 /* cart */
 const prod = id => products.find(p => String(p.id)===String(id));
+const pendingCartVariants = {};
 function renderCart(){
   let t=0, n=0;
   $('#items').innerHTML = cart.length ? cart.map((i,k) => { const p=prod(i.id), name=p?.name||i.name||'Product', price=Number(p?.price??i.price??0); t+=price*i.qty; n+=i.qty;
-    return `<div class="it"><span>${esc(name)}<br><small>${esc(i.size)}${i.color?' / '+esc(i.color):''} · R${price}</small></span><span><button data-k="${k}" data-d="-1">−</button> ${i.qty} <button data-k="${k}" data-d="1">+</button></span></div>`; }).join('') : '<p class="note">Your cart is empty. Go get something real.</p>';
+    const variants = p && Array.isArray(p.product_variants) ? p.product_variants : [];
+    const available = variants.filter(variant => Number(variant.stock) > 0);
+    const sizes = [...new Set(available.map(variant => variant.size))];
+    const colors = [...new Set(available.map(variant => variant.color))];
+    const selection = pendingCartVariants[k] || i;
+    const sizeOptions = [...new Set([...sizes, i.size, selection.size])];
+    const colorOptions = [...new Set([...colors, i.color, selection.color])];
+    const pendingVariant = variants.find(variant => variant.size === selection.size && variant.color === selection.color && Number(variant.stock) > 0);
+    const pendingMessage = pendingCartVariants[k] && !pendingVariant ? '<small role="status">Choose an available size and colour combination.</small>' : '';
+    const variantEditor = i.variant_id && variants.length
+      ? `<div class="cart-variant-editor">
+          <label>Size<select data-cart-size data-k="${k}">${sizeOptions.map(size => `<option value="${esc(size)}" ${size===selection.size?'selected':''}>${esc(size)}</option>`).join('')}</select></label>
+          <label>Colour<select data-cart-color data-k="${k}">${colorOptions.map(color => `<option value="${esc(color)}" ${color===selection.color?'selected':''}>${esc(color)}</option>`).join('')}</select></label>
+        </div>${pendingMessage}`
+      : '';
+    return `<div class="it"><div><strong>${esc(name)}</strong><small>Size: ${esc(i.size)}${i.color?' · Colour: '+esc(i.color):''} · R${price}</small>${variantEditor}</div><span class="cart-quantity"><button type="button" aria-label="Decrease ${esc(name)} quantity" data-k="${k}" data-d="-1">−</button> ${i.qty} <button type="button" aria-label="Increase ${esc(name)} quantity" data-k="${k}" data-d="1">+</button></span></div>`; }).join('') : '<p class="note">Your cart is empty. Go get something real.</p>';
   $('#total').textContent = 'R'+t; $('#count').textContent = n; $('#fcount').textContent = n;
 }
-$('#items').addEventListener('click', e => { const b=e.target.closest('button'); if(!b) return; const i=cart[b.dataset.k]; i.qty += Number(b.dataset.d); if(i.qty<1) cart.splice(b.dataset.k,1); save(); renderCart(); });
+$('#items').addEventListener('click', e => { const b=e.target.closest('button[data-d]'); if(!b) return; Object.keys(pendingCartVariants).forEach(key=>delete pendingCartVariants[key]); const i=cart[b.dataset.k]; i.qty += Number(b.dataset.d); if(i.qty<1) cart.splice(b.dataset.k,1); else if(i.qty>20) i.qty=20; save(); renderCart(); });
+$('#items').addEventListener('change', e => {
+  const select=e.target.closest('[data-cart-size],[data-cart-color]');
+  if(!select) return;
+  const item=cart[Number(select.dataset.k)], product=item&&prod(item.id);
+  if(!item||!product) return;
+  const row=select.closest('.it'), size=row.querySelector('[data-cart-size]').value, color=row.querySelector('[data-cart-color]').value;
+  const variant=(product.product_variants||[]).find(option=>option.size===size&&option.color===color&&Number(option.stock)>0);
+  if(!variant){
+    pendingCartVariants[select.dataset.k]={size:size,color:color};
+    renderCart();
+    return toast('That size and colour combination is unavailable. Try another option.');
+  }
+  delete pendingCartVariants[select.dataset.k];
+  item.variant_id=variant.id; item.size=variant.size; item.color=variant.color;
+  save(); renderCart();
+});
 const cartOpen = v => { document.body.classList.toggle('cart', v); $('#nav').classList.remove('open'); };
 $('#navCart').onclick = $('#fab').onclick = () => cartOpen(true);
 $('#closeCart').onclick = $('#veil').onclick = () => cartOpen(false);
@@ -459,11 +693,13 @@ async function loadPickupLocations(){
 }
 async function loadCheckoutAccount(){
   const message=$('#checkoutAccountMessage'), link=$('#checkoutAccountLink'), button=$('#placeOrder');
-  customerProfile=null; button.disabled=true; link.hidden=false;
+  customerProfile=null; customerId=null; button.disabled=true; link.hidden=false;
   if(!sb){ message.textContent='Customer accounts are unavailable until the store is connected.'; return; }
   const sessionResult=await sb.auth.getSession();
   if(sessionResult.error) throw sessionResult.error;
   if(!sessionResult.data.session){ message.textContent='Sign in or create an account to place an order and track its updates.'; return; }
+  customerId=sessionResult.data.session.user.id;
+  syncCustomerCart().catch(error=>console.error('Could not sync signed-in customer cart:',error));
   const profileResult=await sb.from('customer_profiles').select('first_name,last_name,whatsapp_phone,call_phone')
     .eq('user_id',sessionResult.data.session.user.id).maybeSingle();
   if(profileResult.error) throw profileResult.error;
@@ -485,6 +721,7 @@ setFulfilmentFields();
 $('#co').addEventListener('submit', async e => {
   e.preventDefault();
   if(!cart.length) return toast('Your cart is empty');
+  if(Object.keys(pendingCartVariants).length) return toast('Choose an available size and colour combination for each item');
   if(!sb) return toast('Orders are unavailable until the store is connected');
   if(!customerProfile){
     try { await loadCheckoutAccount(); }
@@ -518,7 +755,7 @@ $('#co').addEventListener('submit', async e => {
     const params=new URLSearchParams({ref:orderSummary.reference,subtotal:String(orderSummary.subtotal),total:orderSummary.total==null?'':String(orderSummary.total),status:orderSummary.status});
     confirmationUrl+='?'+params.toString();
   }
-  cart=[]; save(); renderCart(); e.target.reset(); setFulfilmentFields(); cartOpen(false); window.location.href=confirmationUrl;
+  cart=[]; await save(); renderCart(); e.target.reset(); setFulfilmentFields(); cartOpen(false); window.location.href=confirmationUrl;
 });
 $('#jf').addEventListener('submit', async e => {
   e.preventDefault(); if(!sb) return toast('Demo mode: connect Supabase to save sign-ups');
@@ -529,6 +766,7 @@ renderCart();
 if(new URLSearchParams(window.location.search).get('checkout')==='1') cartOpen(true);
 loadCheckoutAccount().catch(err=>{ console.error('Could not check customer account:',err); $('#checkoutAccountMessage').textContent='Could not check your account. Please refresh and try again.'; });
 load().catch(err=>{ console.error('Could not load storefront data:',err); products=[]; $('#note').textContent='The catalogue is temporarily unavailable. Please refresh to try again.'; draw(); renderCart(); });
+loadFeaturedReviews();
 </script>
 </body>
 </html>

@@ -71,6 +71,14 @@
     return "";
   }
 
+  function trackVisit() {
+    if (!client) return;
+    const path = (window.location.pathname || "/").slice(0, 200);
+    client.from("website_visits").insert({ path: path }).then(function (result) {
+      if (result.error) console.warn("Could not record this page view:", result.error);
+    });
+  }
+
   document.querySelectorAll("[data-year]").forEach(function (node) {
     node.textContent = String(new Date().getFullYear());
   });
@@ -87,6 +95,8 @@
     setMessage: setMessage,
     saveLastOrder: saveLastOrder,
     readLastOrder: readLastOrder,
-    databaseMessage: databaseMessage
+    databaseMessage: databaseMessage,
+    trackVisit: trackVisit
   };
+  trackVisit();
 }());

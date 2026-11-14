@@ -8,6 +8,8 @@
   const signUpTab = document.getElementById("signUpTab");
   const profileFields = document.getElementById("profileFields");
   const privacyAcknowledgement = document.getElementById("privacyAcknowledgement");
+  const password = document.getElementById("accountPassword");
+  const togglePassword = document.getElementById("togglePassword");
   let mode = "signin";
 
   function redirectAfterSignIn() {
@@ -16,6 +18,8 @@
       window.location.assign("admin.html");
     } else if (next === "checkout") {
       window.location.assign("../hoodkiid-storefront.html?checkout=1");
+    } else if (next === "review") {
+      window.location.assign("reviews.html");
     } else {
       window.location.assign("profile.html");
     }
@@ -33,7 +37,7 @@
       input.required = !signingIn && input.id !== "callPhone";
     });
     privacyAcknowledgement.required = !signingIn;
-    document.getElementById("accountPassword").autocomplete = signingIn ? "current-password" : "new-password";
+    password.autocomplete = signingIn ? "current-password" : "new-password";
     submit.textContent = signingIn ? "Sign in" : "Create account";
     HK.setMessage(message, "", "");
   }
@@ -54,6 +58,12 @@
 
   signInTab.addEventListener("click", function () { selectMode("signin"); });
   signUpTab.addEventListener("click", function () { selectMode("signup"); });
+  togglePassword.addEventListener("click", function () {
+    const visible = password.type === "password";
+    password.type = visible ? "text" : "password";
+    togglePassword.textContent = visible ? "Hide" : "Show";
+    togglePassword.setAttribute("aria-pressed", String(visible));
+  });
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
     const unavailable = HK.databaseMessage();

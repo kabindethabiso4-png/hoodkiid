@@ -5,6 +5,7 @@
   const workspace = document.getElementById("profileWorkspace");
   const signOutButton = document.getElementById("profileSignOut");
   let user = null;
+  let orderVariants = [];
 
   function showNotice(text, tone) {
     notice.hidden = false;
@@ -13,18 +14,88 @@
     else delete notice.dataset.tone;
   }
 
+  function orderEditForm(order) {
+    const items = Array.isArray(order.items) ? order.items : [];
+    const supported = items.length && items.every(function (item) {
+      return item.product_id && item.variant_id && orderVariants.some(function (variant) {
+        return String(variant.id) === String(item.variant_id);
+      });
+    });
+    if (!supported) {
+      return "<p class=\"muted\">Size and colour options could not be loaded for editing. Refresh the page or contact HOODKIID.</p>";
+    }
+    return '<form class="order-edit-form" data-order-id="' + HK.escapeHtml(order.id) + '">' +
+      items.map(function (item, index) {
+        const variants = orderVariants.filter(function (variant) {
+          return String(variant.product_id) === String(item.product_id) &&
+            (Number(variant.stock) > 0 || String(variant.id) === String(item.variant_id));
+        });
+        const sizes = Array.from(new Set(variants.map(function (variant) { return variant.size; }).concat(item.size)));
+        const colors = Array.from(new Set(variants.map(function (variant) { return variant.color; }).concat(item.color)));
+        return '<div class="order-edit-line" data-product-id="' + HK.escapeHtml(item.product_id) +
+          '" data-current-variant="' + HK.escapeHtml(item.variant_id) + '">' +
+          "<strong>" + HK.escapeHtml(item.name) + "</strong>" +
+          '<div class="order-edit-options">' +
+          '<label>Size<select class="field" data-order-size>' + sizes.map(function (size) {
+            return '<option value="' + HK.escapeHtml(size) + '"' + (size === item.size ? " selected" : "") + ">" +
+              HK.escapeHtml(size) + "</option>";
+          }).join("") + "</select></label>" +
+          '<label>Colour<select class="field" data-order-color>' + colors.map(function (color) {
+            return '<option value="' + HK.escapeHtml(color) + '"' + (color === item.color ? " selected" : "") + ">" +
+              HK.escapeHtml(color) + "</option>";
+          }).join("") + "</select></label>" +
+          '<label>Quantity<input class="field" data-order-quantity type="number" min="1" max="20" step="1" required value="' +
+          Number(item.quantity) + '"></label></div>' +
+          '<p class="form-message" data-order-edit-message role="status" aria-live="polite"></p>' +
+          '<input type="hidden" data-order-selected-variant value=""></div>';
+      }).join("") +
+      '<p class="muted">Saving changes recalculates the item total and delivery fee. Please use the updated total and wait for any new delivery quote before paying.</p>' +
+      '<button class="button button-dark" type="submit">Save order changes</button>' +
+      '<p class="form-message" data-order-save-message role="status" aria-live="polite"></p></form>';
+  }
+
   function formatOrder(order) {
-    const items = (order.items || []).map(function (item) {
-      return HK.escapeHtml(item.name) + " · " + HK.escapeHtml(item.size) + " / " +
-        HK.escapeHtml(item.color) + " × " + Number(item.quantity);
+    const items = (Array.isArray(order.items) ? order.items : []).map(function (item) {
+      const options = [item.size, item.color].filter(Boolean).map(HK.escapeHtml).join(" / ");
+      return HK.escapeHtml(item.name) + " · " + options + " × " + Number(item.quantity);
     }).join("<br>");
+    const canEdit = order.payment_status === "awaiting_payment" &&
+      ["awaiting_payment", "awaiting_quote"].includes(order.order_status);
     return '<article class="order-card"><header><h3>' + HK.escapeHtml(order.order_reference) +
       '</h3><span>' + HK.escapeHtml(new Date(order.created_at).toLocaleString("en-ZA")) + "</span></header>" +
       "<p>Status: <strong>" + HK.escapeHtml(String(order.order_status).replaceAll("_", " ")) +
       "</strong><br>Payment: " + HK.escapeHtml(String(order.payment_status).replaceAll("_", " ")) +
       "</p><p>" + items + "</p><p>Items: " + HK.money(order.subtotal) +
       " · Delivery: " + (order.delivery_fee == null ? "to confirm" : HK.money(order.delivery_fee)) +
-      " · Total: " + (order.total == null ? "to confirm" : HK.money(order.total)) + "</p></article>";
+      " · Total: " + (order.total == null ? "to confirm" : HK.money(order.total)) + "</p>" +
+      (canEdit ? orderEditForm(order) : "") + "</article>";
+  }
+
+  function validateOrderEditForm(form) {
+    let valid = true;
+    form.querySelectorAll(".order-edit-line").forEach(function (line) {
+      const size = line.querySelector("[data-order-size]").value;
+      const color = line.querySelector("[data-order-color]").value;
+      const quantity = Number(line.querySelector("[data-order-quantity]").value);
+      const variant = orderVariants.find(function (option) {
+        return String(option.product_id) === line.dataset.productId &&
+          option.size === size && option.color === color &&
+          (Number(option.stock) > 0 || String(option.id) === line.dataset.currentVariant);
+      });
+      const message = line.querySelector("[data-order-edit-message]");
+      if (!variant) {
+        message.textContent = "That size and colour combination is unavailable.";
+        valid = false;
+      } else if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
+        message.textContent = "Quantity must be between 1 and 20.";
+        valid = false;
+      } else {
+        line.querySelector("[data-order-selected-variant]").value = variant.id;
+        message.textContent = "";
+      }
+    });
+    form.querySelector('button[type="submit"]').disabled = !valid;
+    return valid;
   }
 
   async function loadCustomerOrders() {
@@ -38,8 +109,98 @@
       console.error("Could not load customer orders:", result.error);
       return;
     }
+    const hasEditableOrders = (result.data || []).some(function (order) {
+      return order.payment_status === "awaiting_payment" &&
+        ["awaiting_payment", "awaiting_quote"].includes(order.order_status);
+    });
+    orderVariants = [];
+    if (hasEditableOrders) {
+      const variantsResult = await HK.client.from("product_variants")
+        .select("id,product_id,size,color,stock");
+      if (variantsResult.error) {
+        console.error("Could not load order edit variants:", variantsResult.error);
+        showNotice("Order history loaded, but available size and colour options could not be loaded. Refresh or contact HOODKIID before paying.", "error");
+      } else {
+        orderVariants = variantsResult.data || [];
+      }
+    }
     list.innerHTML = (result.data || []).map(formatOrder).join("") || "<p>You have no orders yet.</p>";
+    list.querySelectorAll(".order-edit-form").forEach(validateOrderEditForm);
   }
+
+  document.getElementById("customerOrders").addEventListener("change", function (event) {
+    if (!event.target.matches("[data-order-size],[data-order-color]")) return;
+    validateOrderEditForm(event.target.closest(".order-edit-form"));
+  });
+  document.getElementById("customerOrders").addEventListener("input", function (event) {
+    if (!event.target.matches("[data-order-quantity]")) return;
+    validateOrderEditForm(event.target.closest(".order-edit-form"));
+  });
+  document.getElementById("customerOrders").addEventListener("submit", async function (event) {
+    const form = event.target.closest(".order-edit-form");
+    if (!form) return;
+    event.preventDefault();
+    if (!validateOrderEditForm(form)) return;
+    const button = form.querySelector('button[type="submit"]');
+    const message = form.querySelector("[data-order-save-message]");
+    const items = Array.from(form.querySelectorAll(".order-edit-line")).map(function (line) {
+      return {
+        variant_id: line.querySelector("[data-order-selected-variant]").value,
+        quantity: Number(line.querySelector("[data-order-quantity]").value)
+      };
+    });
+    button.disabled = true;
+    button.textContent = "Saving changes…";
+    message.textContent = "";
+    try {
+      const result = await HK.client.rpc("edit_own_unpaid_order", {
+        p_order_id: form.dataset.orderId,
+        p_items: items
+      });
+      if (result.error) {
+        console.error("Could not edit unpaid order:", result.error);
+        const serverMessage = String(result.error.message || "");
+        message.textContent = /insufficient stock|unavailable|no longer available/i.test(serverMessage)
+          ? "A selected size, colour, or quantity is no longer available. Review your selections and try again."
+          : "Could not update this order. Refresh the page and try again.";
+        message.dataset.tone = "error";
+        button.disabled = false;
+        button.textContent = "Save order changes";
+        return;
+      }
+      const updated = Array.isArray(result.data) ? result.data[0] : result.data;
+      if (!updated) {
+        message.textContent = "The order update could not be confirmed. Refresh your order history before paying.";
+        message.dataset.tone = "error";
+        button.disabled = false;
+        button.textContent = "Save order changes";
+        return;
+      }
+      const lastOrder = HK.readLastOrder();
+      if (lastOrder && lastOrder.reference === updated.order_reference) {
+        try {
+          HK.saveLastOrder({
+            reference: updated.order_reference,
+            subtotal: updated.subtotal,
+            total: updated.total,
+            status: updated.order_status
+          });
+        } catch (error) {
+          console.warn("Could not update the local order confirmation:", error);
+        }
+      }
+      showNotice(updated.order_status === "awaiting_quote"
+        ? "Order updated. Please wait for HOODKIID to confirm the new delivery fee before paying."
+        : "Order updated. Use the new total shown in your order history before paying.", "");
+      await loadCustomerOrders();
+    } catch (error) {
+      console.error("Could not reach the order edit service:", error);
+      message.textContent = "Could not reach the order service. Your existing order is unchanged.";
+      message.dataset.tone = "error";
+      button.disabled = false;
+      button.textContent = "Save order changes";
+    }
+  });
 
   async function loadProfile() {
     const result = await HK.client.from("customer_profiles")

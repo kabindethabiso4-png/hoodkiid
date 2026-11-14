@@ -22,16 +22,39 @@
     <div class="notice" id="adminNotice" role="status">Checking access…</div>
     <section id="adminWorkspace" hidden>
       <div class="admin-tabs" role="tablist">
-        <button class="tab active" id="ordersTab" type="button" role="tab" aria-selected="true">Orders</button>
+        <button class="tab active" id="analyticsTab" type="button" role="tab" aria-selected="true">Dashboard</button>
+        <button class="tab" id="ordersTab" type="button" role="tab" aria-selected="false">Orders</button>
+        <button class="tab" id="reviewsTab" type="button" role="tab" aria-selected="false">Reviews</button>
         <button class="tab" id="productsTab" type="button" role="tab" aria-selected="false">Products & stock</button>
         <button class="tab" id="accountsTab" type="button" role="tab" aria-selected="false">Bank accounts</button>
         <button class="tab" id="pickupTab" type="button" role="tab" aria-selected="false">Pickup locations</button>
         <button class="tab" id="privacyTab" type="button" role="tab" aria-selected="false">Privacy requests</button>
         <button class="tab" id="teamTab" type="button" role="tab" aria-selected="false" hidden>Team access</button>
       </div>
-      <section id="ordersPanel" role="tabpanel">
+      <section id="analyticsPanel" role="tabpanel">
+        <div class="admin-heading"><div><p class="eyebrow">Store performance</p><h2>Dashboard</h2></div><button class="button button-light" id="refreshAnalytics" type="button">Refresh analysis</button></div>
+        <p class="muted">Page views are recorded without visitor names or contact details. Cart details are available for signed-in customers only.</p>
+        <div class="analytics-cards">
+          <article class="analytics-card"><span>Page views today</span><strong id="visitsToday">—</strong><small>All recorded pages</small></article>
+          <article class="analytics-card"><span>Page views · 30 days</span><strong id="visitsMonth">—</strong><small>Rolling 30-day total</small></article>
+          <article class="analytics-card"><span>Orders · 30 days</span><strong id="ordersMonth">—</strong><small>All order statuses</small></article>
+          <article class="analytics-card"><span>Verified sales · 30 days</span><strong id="salesMonth">—</strong><small>Payments verified by admin</small></article>
+          <article class="analytics-card"><span>Open customer carts</span><strong id="openCartCount">—</strong><small>Signed-in customers</small></article>
+        </div>
+        <div class="analytics-layout">
+          <section class="panel"><h3>Visits · last 14 days</h3><div id="visitsChart" class="visits-chart" role="img" aria-label="Daily page visits for the last 14 days"></div></section>
+          <section class="panel"><h3>Popular pages · 30 days</h3><div id="popularPages" class="popular-pages"></div></section>
+          <section class="panel"><h3>Customers with open carts</h3><div id="openCartsList" class="orders-list"></div></section>
+        </div>
+      </section>
+      <section id="ordersPanel" role="tabpanel" hidden>
         <div class="admin-heading"><h2>Orders</h2><button class="button button-light" id="refreshOrders" type="button">Refresh</button></div>
         <div id="ordersList" class="orders-list"></div>
+      </section>
+      <section id="reviewsPanel" role="tabpanel" hidden>
+        <div class="admin-heading"><h2>Customer reviews</h2><button class="button button-light" id="refreshReviews" type="button">Refresh</button></div>
+        <p class="muted">Approve customer submissions for public display, reject unsuitable submissions, and reply as the shop.</p>
+        <div id="reviewsList" class="orders-list"></div>
       </section>
       <section id="productsPanel" role="tabpanel" hidden>
         <div class="admin-heading"><h2>Products & stock</h2></div>
@@ -41,9 +64,10 @@
           <label for="productCategory">Category</label><input class="field" id="productCategory" required maxlength="80">
           <label for="productDescription">Description</label><textarea class="field" id="productDescription" rows="2" maxlength="500"></textarea>
           <label for="productPrice">Price (R)</label><input class="field" id="productPrice" type="number" min="0" step="0.01" required>
-          <label for="variantSize">Initial size</label><input class="field" id="variantSize" required maxlength="32">
-          <label for="variantColor">Initial colour</label><input class="field" id="variantColor" required maxlength="60" value="Standard">
+          <label for="variantSize">Initial size (one size)</label><input class="field" id="variantSize" required maxlength="32">
+          <label for="variantColor">Initial colour (one colour)</label><input class="field" id="variantColor" required maxlength="60" value="Standard">
           <label for="variantStock">Initial stock</label><input class="field" id="variantStock" type="number" min="0" step="1" required>
+          <p class="muted">A stock variant is one size and one colour. To offer more options, add each size/colour combination separately below and enter its own stock.</p>
           <label for="productImages">Product images <span aria-hidden="true">*</span></label>
           <input class="field" id="productImages" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple required>
           <p class="muted">Add 1–5 images. JPEG, PNG, WebP or GIF; maximum 8 MB each. A product cannot be published without an image.</p>
@@ -56,6 +80,7 @@
           <label for="extraSize">Size</label><input class="field" id="extraSize" required maxlength="32">
           <label for="extraColor">Colour</label><input class="field" id="extraColor" required maxlength="60">
           <label for="extraStock">Stock</label><input class="field" id="extraStock" type="number" min="0" step="1" required>
+          <p class="muted">Enter one size and one colour per variant; do not combine values in either field.</p>
           <button class="button button-dark" type="submit">Add variant</button>
         </form>
       </section>

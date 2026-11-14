@@ -339,6 +339,140 @@ begin
 end;
 $$;
 
+create or replace function public.edit_own_unpaid_order(p_order_id uuid, p_items jsonb)
+returns table (
+  order_reference text,
+  subtotal numeric,
+  delivery_fee numeric,
+  total numeric,
+  order_status text
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  customer_user_id uuid := auth.uid();
+  order_row public.orders%rowtype;
+  item jsonb;
+  variant_row public.product_variants%rowtype;
+  product_row public.products%rowtype;
+  variant_lock_id uuid;
+  line_quantity integer;
+  order_subtotal numeric(10,2) := 0;
+  order_items jsonb := '[]'::jsonb;
+  next_fee numeric(10,2);
+  next_status text;
+begin
+  if customer_user_id is null then
+    raise exception 'Please sign in before editing an order';
+  end if;
+  select * into order_row from public.orders
+    where id = p_order_id and customer_id = customer_user_id
+    for update;
+  if not found or order_row.payment_status <> 'awaiting_payment'
+     or order_row.order_status not in ('awaiting_payment', 'awaiting_quote') then
+    raise exception 'This order is no longer available for editing';
+  end if;
+  if p_items is null or jsonb_typeof(p_items) <> 'array' then
+    raise exception 'The order items must be an array';
+  end if;
+  if jsonb_array_length(p_items) not between 1 and 50 then
+    raise exception 'The order must contain between 1 and 50 items';
+  end if;
+
+  for item in select value from jsonb_array_elements(p_items)
+  loop
+    if coalesce(item->>'variant_id', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+       or coalesce(item->>'quantity', '') !~ '^[0-9]{1,2}$' then
+      raise exception 'An order item is invalid';
+    end if;
+    line_quantity := (item->>'quantity')::integer;
+    if line_quantity < 1 or line_quantity > 20 then
+      raise exception 'Item quantity must be between 1 and 20';
+    end if;
+  end loop;
+  for item in select value from jsonb_array_elements(order_row.items)
+  loop
+    if coalesce(item->>'variant_id', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+       or coalesce(item->>'quantity', '') !~ '^[0-9]{1,2}$' then
+      raise exception 'This order cannot be edited because its saved items are invalid';
+    end if;
+  end loop;
+
+  for variant_lock_id in
+    select variant_ids.id
+    from (
+      select (old_item.value->>'variant_id')::uuid as id
+      from jsonb_array_elements(order_row.items) as old_item(value)
+      union
+      select (new_item.value->>'variant_id')::uuid as id
+      from jsonb_array_elements(p_items) as new_item(value)
+    ) as variant_ids
+    order by variant_ids.id
+  loop
+    perform 1 from public.product_variants where id = variant_lock_id for update;
+  end loop;
+
+  for item in select value from jsonb_array_elements(order_row.items)
+  loop
+    update public.product_variants
+      set stock = stock + (item->>'quantity')::integer
+      where id = (item->>'variant_id')::uuid;
+  end loop;
+
+  for item in select value from jsonb_array_elements(p_items)
+  loop
+    line_quantity := (item->>'quantity')::integer;
+    select * into variant_row from public.product_variants
+      where id = (item->>'variant_id')::uuid;
+    if not found or variant_row.stock < line_quantity then
+      raise exception 'An item is unavailable or has insufficient stock';
+    end if;
+    select * into product_row from public.products
+      where id = variant_row.product_id and active = true;
+    if not found then
+      raise exception 'An item is no longer available';
+    end if;
+    order_subtotal := order_subtotal + (product_row.price * line_quantity);
+    order_items := order_items || jsonb_build_array(jsonb_build_object(
+      'product_id', product_row.id,
+      'variant_id', variant_row.id,
+      'name', product_row.name,
+      'size', variant_row.size,
+      'color', variant_row.color,
+      'unit_price', product_row.price,
+      'quantity', line_quantity
+    ));
+    update public.product_variants set stock = stock - line_quantity where id = variant_row.id;
+  end loop;
+
+  if order_row.fulfilment = 'pickup' then
+    next_fee := 0;
+    next_status := 'awaiting_payment';
+  elsif order_subtotal > 1500 and order_row.delivery_zone in ('Soshanguve', 'Pretoria') then
+    next_fee := 0;
+    next_status := 'awaiting_payment';
+  else
+    next_fee := null;
+    next_status := 'awaiting_quote';
+  end if;
+
+  update public.orders
+    set items = order_items,
+        subtotal = order_subtotal,
+        delivery_fee = next_fee,
+        total = case when next_fee is null then null else order_subtotal + next_fee end,
+        order_status = next_status
+    where id = p_order_id;
+
+  return query
+    select updated.order_reference, updated.subtotal, updated.delivery_fee, updated.total, updated.order_status
+    from public.orders updated
+    where updated.id = p_order_id;
+end;
+$$;
+
 create or replace function public.restore_cancelled_order_stock()
 returns trigger
 language plpgsql
@@ -500,6 +634,15 @@ create policy "Admins manage products" on public.products
 create policy "Anyone can view available product variants" on public.product_variants
   for select to anon, authenticated using (
     stock > 0 and exists (select 1 from public.products p where p.id = product_id and p.active = true)
+    or exists (
+      select 1
+      from public.orders o
+      cross join lateral jsonb_array_elements(o.items) as order_item(value)
+      where o.customer_id = (select auth.uid())
+        and o.payment_status = 'awaiting_payment'
+        and o.order_status in ('awaiting_payment', 'awaiting_quote')
+        and order_item.value->>'variant_id' = product_variants.id::text
+    )
     or public.is_admin()
   );
 create policy "Admins manage product variants" on public.product_variants
@@ -542,6 +685,8 @@ create policy "Admins can delete product images" on storage.objects
 
 revoke all on function public.create_order(text, text, uuid, text, jsonb) from public, anon;
 grant execute on function public.create_order(text, text, uuid, text, jsonb) to authenticated;
+revoke all on function public.edit_own_unpaid_order(uuid, jsonb) from public, anon;
+grant execute on function public.edit_own_unpaid_order(uuid, jsonb) to authenticated;
 revoke all on function public.admin_create_product(text, text, text, numeric, text, text, integer, text[]) from public;
 grant execute on function public.admin_create_product(text, text, text, numeric, text, text, integer, text[]) to authenticated;
 revoke all on function public.set_order_delivery_fee(uuid, numeric) from public;
@@ -560,3 +705,216 @@ grant select, insert, update on public.customer_profiles to authenticated;
 grant insert on public.subscribers to anon, authenticated;
 grant select on public.subscribers to authenticated;
 grant select, insert, update on public.privacy_requests to authenticated;
+
+create or replace function public.valid_product_review_image_urls(p_urls text[])
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $$
+  select cardinality(p_urls) <= 3
+    and array_position(p_urls, null) is null
+    and not exists (
+      select 1 from unnest(p_urls) as urls(url)
+      where length(url) > 2048
+        or url !~ '^https://[^/]+/storage/v1/object/public/product-review-images/.+'
+    );
+$$;
+
+create table if not exists public.product_reviews (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null references public.products(id) on delete cascade,
+  customer_id uuid not null references auth.users(id) on delete cascade,
+  rating integer not null check (rating between 1 and 5),
+  review_text text not null check (length(trim(review_text)) between 10 and 1500),
+  image_urls text[] not null default '{}',
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  admin_reply text check (admin_reply is null or length(admin_reply) <= 1500),
+  replied_at timestamptz,
+  created_at timestamptz not null default now(),
+  constraint product_reviews_images_valid check (public.valid_product_review_image_urls(image_urls))
+);
+alter table public.product_reviews drop constraint if exists product_reviews_images_valid;
+alter table public.product_reviews add constraint product_reviews_images_valid
+  check (public.valid_product_review_image_urls(image_urls));
+
+create index if not exists product_reviews_product_created_idx
+  on public.product_reviews (product_id, created_at desc);
+create index if not exists product_reviews_customer_created_idx
+  on public.product_reviews (customer_id, created_at desc);
+
+create table if not exists public.product_review_votes (
+  review_id uuid not null references public.product_reviews(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  vote text not null check (vote in ('like', 'dislike')),
+  created_at timestamptz not null default now(),
+  primary key (review_id, user_id)
+);
+
+create table if not exists public.website_visits (
+  id bigint generated always as identity primary key,
+  path text not null check (length(path) between 1 and 200 and left(path, 1) = '/'),
+  created_at timestamptz not null default now()
+);
+create index if not exists website_visits_created_at_idx on public.website_visits (created_at desc);
+
+create table if not exists public.customer_carts (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  items jsonb not null check (jsonb_typeof(items) = 'array' and jsonb_array_length(items) between 1 and 50),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.product_reviews enable row level security;
+alter table public.product_review_votes enable row level security;
+alter table public.website_visits enable row level security;
+alter table public.customer_carts enable row level security;
+
+drop policy if exists "Anyone can view approved product reviews" on public.product_reviews;
+drop policy if exists "Customers can submit own product reviews" on public.product_reviews;
+drop policy if exists "Admins can manage product reviews" on public.product_reviews;
+drop policy if exists "Anyone can record page visits" on public.website_visits;
+drop policy if exists "Admins can view page visits" on public.website_visits;
+drop policy if exists "Customers can manage own cart" on public.customer_carts;
+drop policy if exists "Admins can view customer carts" on public.customer_carts;
+drop policy if exists "Customers can upload own review images" on storage.objects;
+drop policy if exists "Customers can delete own review images" on storage.objects;
+drop policy if exists "Admins can delete review images" on storage.objects;
+
+create policy "Anyone can view approved product reviews" on public.product_reviews
+  for select to anon, authenticated using (status = 'approved' or customer_id = (select auth.uid()) or public.is_admin());
+create policy "Customers can submit own product reviews" on public.product_reviews
+  for insert to authenticated with check (
+    customer_id = (select auth.uid()) and status = 'pending' and admin_reply is null and replied_at is null
+  );
+create policy "Admins can manage product reviews" on public.product_reviews
+  for update to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "Anyone can record page visits" on public.website_visits
+  for insert to anon, authenticated with check (length(path) between 1 and 200 and left(path, 1) = '/');
+create policy "Admins can view page visits" on public.website_visits
+  for select to authenticated using (public.is_admin());
+create policy "Customers can manage own cart" on public.customer_carts
+  for all to authenticated using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
+create policy "Admins can view customer carts" on public.customer_carts
+  for select to authenticated using (public.is_admin());
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('product-review-images', 'product-review-images', true, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+create policy "Customers can upload own review images" on storage.objects
+  for insert to authenticated with check (
+    bucket_id = 'product-review-images' and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+create policy "Customers can delete own review images" on storage.objects
+  for delete to authenticated using (
+    bucket_id = 'product-review-images' and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+create policy "Admins can delete review images" on storage.objects
+  for delete to authenticated using (bucket_id = 'product-review-images' and public.is_admin());
+
+create or replace function public.list_public_product_reviews()
+returns table (
+  id uuid,
+  product_id uuid,
+  product_name text,
+  customer_name text,
+  rating integer,
+  review_text text,
+  image_urls text[],
+  admin_reply text,
+  created_at timestamptz,
+  like_count bigint,
+  dislike_count bigint
+)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select r.id, r.product_id, p.name,
+    coalesce(nullif(trim(cp.first_name), ''), 'HOODKIID customer'),
+    r.rating, r.review_text, r.image_urls, r.admin_reply, r.created_at,
+    count(v.user_id) filter (where v.vote = 'like'),
+    count(v.user_id) filter (where v.vote = 'dislike')
+  from public.product_reviews r
+  join public.products p on p.id = r.product_id
+  left join public.customer_profiles cp on cp.user_id = r.customer_id
+  left join public.product_review_votes v on v.review_id = r.id
+  where r.status = 'approved'
+  group by r.id, p.name, cp.first_name, cp.last_name
+  order by r.created_at desc
+  limit 100;
+$$;
+
+create or replace function public.vote_product_review(p_review_id uuid, p_vote text)
+returns table (like_count bigint, dislike_count bigint)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  current_vote text;
+begin
+  if auth.uid() is null then
+    raise exception 'Sign in to react to a review';
+  end if;
+  if p_vote not in ('like', 'dislike') then
+    raise exception 'Choose like or dislike';
+  end if;
+  perform 1 from public.product_reviews
+    where id = p_review_id and status = 'approved' for update;
+  if not found then
+    raise exception 'Review not found';
+  end if;
+  select vote into current_vote from public.product_review_votes
+    where review_id = p_review_id and user_id = auth.uid();
+  if current_vote = p_vote then
+    delete from public.product_review_votes
+      where review_id = p_review_id and user_id = auth.uid();
+  else
+    insert into public.product_review_votes (review_id, user_id, vote)
+      values (p_review_id, auth.uid(), p_vote)
+      on conflict (review_id, user_id) do update set vote = excluded.vote, created_at = now();
+  end if;
+  return query
+    select count(*) filter (where vote = 'like'), count(*) filter (where vote = 'dislike')
+    from public.product_review_votes where review_id = p_review_id;
+end;
+$$;
+
+create or replace function public.admin_list_open_carts()
+returns table (user_id uuid, email text, first_name text, last_name text, items jsonb, updated_at timestamptz)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Admin access required';
+  end if;
+  return query
+    select c.user_id, u.email::text, cp.first_name, cp.last_name, c.items, c.updated_at
+    from public.customer_carts c
+    left join auth.users u on u.id = c.user_id
+    left join public.customer_profiles cp on cp.user_id = c.user_id
+    order by c.updated_at desc
+    limit 100;
+end;
+$$;
+
+revoke all on function public.list_public_product_reviews() from public;
+grant execute on function public.list_public_product_reviews() to anon, authenticated;
+revoke all on function public.vote_product_review(uuid, text) from public, anon;
+grant execute on function public.vote_product_review(uuid, text) to authenticated;
+revoke all on function public.admin_list_open_carts() from public;
+grant execute on function public.admin_list_open_carts() to authenticated;
+
+grant select, insert, update on public.product_reviews to authenticated;
+grant select on public.product_reviews to anon;
+grant insert on public.website_visits to anon, authenticated;
+grant select on public.website_visits to authenticated;
+grant select, insert, update, delete on public.customer_carts to authenticated;
